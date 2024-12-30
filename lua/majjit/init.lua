@@ -23,6 +23,7 @@ end
 
 --- uses word under cursor as change id
 function M.describe()
+  local change_id = require("majjit.utils").cursor_word()
   local bufnr = vim.api.nvim_create_buf(false, false)
   vim.api.nvim_buf_set_name(bufnr, "majjit://describe")
   vim.api.nvim_set_option_value("filetype", "jj", { buf = bufnr })
@@ -32,10 +33,13 @@ function M.describe()
     buffer = bufnr,
     callback = function(args)
       local message = table.concat(vim.api.nvim_buf_get_lines(args.buf, 0, -1, true), "\n")
-      vim.system({ "jj", "describe", "-r", "@", "-m", message }, {}, function()
+      vim.system({ "jj", "describe", "-r", change_id, "-m", message }, {}, function()
         vim.schedule(function()
+          -- expected for the "BufWriteCmd" event
           vim.api.nvim_set_option_value("modified", false, { buf = args.buf })
+          -- return to status buffer
           M.status()
+          -- clear the describe buffer
           vim.api.nvim_buf_delete(args.buf, {})
         end)
       end)
