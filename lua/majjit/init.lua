@@ -19,6 +19,14 @@ function M.setup()
 end
 
 --- uses word under cursor as change id
+function M.squash()
+  local change_id = require("majjit.utils").cursor_word()
+  vim.system({ "jj", "squash", "-r", change_id }, {}, function()
+    vim.schedule(M.status)
+  end)
+end
+
+--- uses word under cursor as change id
 function M.abandon()
   local change_id = require("majjit.utils").cursor_word()
   vim.system({ "jj", "abandon", change_id }, {}, function()
