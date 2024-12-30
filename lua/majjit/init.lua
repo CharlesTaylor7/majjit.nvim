@@ -1,36 +1,57 @@
 local M = {}
 
 function M.setup()
-  local bufnr = vim.api.nvim_create_buf(false, false)
-  vim.api.nvim_buf_set_name(bufnr, "majjit://status")
-  vim.api.nvim_set_option_value("filetype", "majjit", { buf = bufnr })
-  vim.api.nvim_set_option_value("buftype", "nowrite", { buf = bufnr })
-  vim.api.nvim_set_option_value("modified", false, { buf = bufnr })
-  vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
+  local buf = vim.api.nvim_create_buf(false, false)
+  vim.api.nvim_buf_set_name(buf, "majjit://status")
+  vim.api.nvim_set_option_value("filetype", "majjit", { buf = buf })
+  vim.api.nvim_set_option_value("buftype", "nowrite", { buf = buf })
+  vim.api.nvim_set_option_value("modified", false, { buf = buf })
+  vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
 
-  vim.keymap.set("n", "<localleader>s", M.split, { buffer = bufnr, desc = "split" })
-  vim.keymap.set("n", "<localleader>d", M.describe, { buffer = bufnr, desc = "describe" })
+  vim.keymap.set("n", "<localleader>d", M.describe, { buffer = buf, desc = "describe" })
+  vim.keymap.set("n", "<localleader>a", M.abandon, { buffer = buf, desc = "abandon" })
+  -- vim.keymap.set("n", "<localleader>s", M.squash, { buffer = buf, desc = "squash" })
+  -- vim.keymap.set("n", "<localleader>n", M.new_change, { buffer = buf, desc = "new change" })
+  -- vim.keymap.set("n", "<localleader>p", M.git_push, { buffer = buf, desc = "git push" })
+  -- vim.keymap.set("n", "<localleader>ab", M.advance_bookmark, { buffer = buf, desc = "advance bookmark" })
 
-  _G.majjit_status_buffer = bufnr
+  _G.majjit_status_buffer = buf
+end
+
+--- uses word under cursor as change id
+function M.abandon()
+  local change_id = require("majjit.utils").cursor_word()
+  vim.system({ "jj", "abandon", change_id }, {}, function()
+    vim.schedule(M.status)
+  end)
 end
 
 --- uses word under cursor as change id
 --- opens a terminal window for the jj split tui
 function M.split()
-  local bufnr = vim.api.nvim_create_buf(false, false)
-  vim.api.nvim_buf_set_name(bufnr, "majjit://split")
+  local change_id = require("majjit.utils").cursor_word()
+  local buf = vim.api.nvim_create_buf(false, false)
+  vim.api.nvim_buf_set_name(buf, "majjit://split")
+  vim.api.nvim_win_set_buf(0, buf)
+  vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = buf })
+  vim.fn.termopen({ "jj", "split", "--interactive", "-r", change_id }, {
+    on_exit = function()
+      M.status()
+    end,
+  })
 end
 
 --- uses word under cursor as change id
 function M.describe()
   local change_id = require("majjit.utils").cursor_word()
-  local bufnr = vim.api.nvim_create_buf(false, false)
-  vim.api.nvim_buf_set_name(bufnr, "majjit://describe")
-  vim.api.nvim_set_option_value("filetype", "jj", { buf = bufnr })
-  vim.api.nvim_set_option_value("buftype", "acwrite", { buf = bufnr })
+  local buf = vim.api.nvim_create_buf(false, false)
+  vim.api.nvim_buf_set_name(buf, "majjit://describe")
+  vim.api.nvim_set_option_value("filetype", "jj", { buf = buf })
+  vim.api.nvim_set_option_value("buftype", "acwrite", { buf = buf })
+  vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = buf })
 
   vim.api.nvim_create_autocmd("BufWriteCmd", {
-    buffer = bufnr,
+    buffer = buf,
     callback = function(args)
       local message = table.concat(vim.api.nvim_buf_get_lines(args.buf, 0, -1, true), "\n")
       vim.system({ "jj", "describe", "-r", change_id, "-m", message }, {}, function()
@@ -39,17 +60,15 @@ function M.describe()
           vim.api.nvim_set_option_value("modified", false, { buf = args.buf })
           -- return to status buffer
           M.status()
-          -- clear the describe buffer
-          vim.api.nvim_buf_delete(args.buf, {})
         end)
       end)
     end,
   })
 
   -- jump to buffer
-  vim.api.nvim_win_set_buf(0, bufnr)
+  vim.api.nvim_win_set_buf(0, buf)
 end
-
+--- https://github.com/jj-vcs/jj/blob/main/docs/templates.md
 --- opens status buffer
 function M.status()
   local stdout = vim.system({ "jj", "status", "--color", "never" }):wait(3000).stdout

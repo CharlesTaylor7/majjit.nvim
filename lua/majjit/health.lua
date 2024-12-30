@@ -1,4 +1,5 @@
 local M = {}
+
 function M.check()
   vim.health.start("majjit")
   local jj = vim.fn.exepath("jj")

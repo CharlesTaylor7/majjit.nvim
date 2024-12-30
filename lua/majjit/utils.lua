@@ -1,4 +1,5 @@
 local M = {}
+
 function M.cursor_word()
   local cursor = vim.api.nvim_win_get_cursor(0)
   local line = vim.api.nvim_get_current_line()
@@ -10,5 +11,5 @@ function M.cursor_word()
 end
 
 -- vim.keymap.set("n", "<localleader>cw", M.cursor_word, { desc = "cursor word" })
---
+
 return M
