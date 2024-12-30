@@ -10,6 +10,14 @@ function M.cursor_word()
   return word
 end
 
+function M.root_dir()
+  M.path = debug.getinfo(1).source:match("@?(.*/)")
+
+  local split = vim.split(M.path, "/")
+  local root_dir = table.concat(split, "/", 1, vim.tbl_count(split) - 3)
+  return root_dir
+end
+
 -- vim.keymap.set("n", "<localleader>cw", M.cursor_word, { desc = "cursor word" })
 
 return M

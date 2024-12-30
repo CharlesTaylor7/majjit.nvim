@@ -10,8 +10,9 @@ function M.setup()
 
   vim.keymap.set("n", "<localleader>d", M.describe, { buffer = buf, desc = "describe" })
   vim.keymap.set("n", "<localleader>a", M.abandon, { buffer = buf, desc = "abandon" })
-  -- vim.keymap.set("n", "<localleader>s", M.squash, { buffer = buf, desc = "squash" })
-  -- vim.keymap.set("n", "<localleader>n", M.new_change, { buffer = buf, desc = "new change" })
+  vim.keymap.set("n", "<localleader>s", M.squash, { buffer = buf, desc = "squash" })
+  vim.keymap.set("n", "<localleader>w", M.absorb, { buffer = buf, desc = "absorb" })
+  vim.keymap.set("n", "<localleader>n", M.new, { buffer = buf, desc = "new change" })
   -- vim.keymap.set("n", "<localleader>p", M.git_push, { buffer = buf, desc = "git push" })
   -- vim.keymap.set("n", "<localleader>ab", M.advance_bookmark, { buffer = buf, desc = "advance bookmark" })
 
@@ -19,9 +20,25 @@ function M.setup()
 end
 
 --- uses word under cursor as change id
+function M.new()
+  local change_id = require("majjit.utils").cursor_word()
+  vim.system({ "jj", "new", change_id }, {}, function()
+    vim.schedule(M.status)
+  end)
+end
+
+--- uses word under cursor as change id
+function M.absorb()
+  local change_id = require("majjit.utils").cursor_word()
+  vim.system({ "jj", "absorb", "--from", change_id }, {}, function()
+    vim.schedule(M.status)
+  end)
+end
+
+--- uses word under cursor as change id
 function M.squash()
   local change_id = require("majjit.utils").cursor_word()
-  vim.system({ "jj", "squash", "-r", change_id }, {}, function()
+  vim.system({ "jj", "squash", "--revision", change_id }, {}, function()
     vim.schedule(M.status)
   end)
 end
@@ -34,7 +51,9 @@ function M.abandon()
   end)
 end
 
---- uses word under cursor as change id
+--- uses path under cursor
+--- uses change id from working copy or heading
+--- jj split -r <change_id> <path>
 --- opens a terminal window for the jj split tui
 function M.split()
   local change_id = require("majjit.utils").cursor_word()
@@ -79,9 +98,14 @@ end
 --- https://github.com/jj-vcs/jj/blob/main/docs/templates.md
 --- opens status buffer
 function M.status()
-  local stdout = vim.system({ "jj", "status", "--color", "never" }):wait(3000).stdout
-  ---@cast stdout string
-  local lines = vim.split(stdout, "\n")
+  local working_copy = vim.system({ "jj", "show", "--summary", "--color", "never" }):wait(3000).stdout
+  ---@cast working_copy string
+  local log = vim.system({ "jj", "log", "--color", "never" }):wait(3000).stdout
+  ---@cast log string
+  local lines = vim.split(working_copy, "\n")
+  for line in vim.iter(vim.split(log, "\n")) do
+    table.insert(lines, line)
+  end
 
   -- write status
   vim.api.nvim_set_option_value("modifiable", true, { buf = _G.majjit_status_buffer })
