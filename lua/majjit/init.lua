@@ -8,6 +8,10 @@ end
 --- https://github.com/jj-vcs/jj/blob/main/docs/templates.md
 --- opens status buffer
 function M.status()
+  M.state = {
+    -- change ids
+    expanded = {},
+  }
   local buf = vim.api.nvim_create_buf(false, false)
   vim.api.nvim_buf_set_name(buf, "majjit://status")
   vim.api.nvim_set_option_value("filetype", "majjit", { buf = buf })
@@ -24,7 +28,8 @@ function M.status()
   -- vim.keymap.set("n", "<localleader>p", M.git_push, { buffer = buf, desc = "git push" })
   -- vim.keymap.set("n", "<localleader>ab", M.advance_bookmark, { buffer = buf, desc = "advance bookmark" })
 
-  local template = table.concat({ "change_id.short()", "' '", "description", '"\n"', "diff.summary()", '"\n"' }, "++")
+  local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'), diff.summary())"
+
   local cmd = { "jj", "log", "--no-pager", "--no-graph", "-T", template }
   local log = vim.system(cmd, {}, function(complete)
     local lines = vim.split(complete.stdout, "\n")
@@ -43,6 +48,11 @@ end
 
 function M.show_file_diff()
   local change_id = require("majjit.utils").cursor_word()
+  if vim.tbl_contains(M.state.expanded, change_id) then
+    -- vim.fn.feedkeys("za", "n")
+    return
+  end
+  table.insert(M.state.expanded, change_id)
   local cursor = vim.api.nvim_win_get_cursor(0)
   local buf = vim.api.nvim_get_current_buf()
 
@@ -52,6 +62,10 @@ function M.show_file_diff()
       vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
       vim.g.baleia.buf_set_lines(buf, cursor[1], cursor[1], true, lines)
       vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+      vim.api.nvim_set_option_value("foldmethod", "manual", { win = 0 })
+      local start = cursor[1] + 1
+      local end_ = cursor[1] + vim.tbl_count(lines)
+      vim.cmd(start .. "," .. end_ .. " fold")
     end)
   end)
 end
