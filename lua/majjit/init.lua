@@ -19,14 +19,16 @@ function M.status()
   vim.keymap.set("n", "<localleader>s", M.squash, { buffer = buf, desc = "squash" })
   vim.keymap.set("n", "<localleader>w", M.absorb, { buffer = buf, desc = "absorb" })
   vim.keymap.set("n", "<localleader>n", M.new, { buffer = buf, desc = "new change" })
+  vim.keymap.set("n", "<tab>", M.show_file_diff, { buffer = buf, desc = "new change" })
   -- vim.keymap.set("n", "<localleader>p", M.git_push, { buffer = buf, desc = "git push" })
   -- vim.keymap.set("n", "<localleader>ab", M.advance_bookmark, { buffer = buf, desc = "advance bookmark" })
 
-  -- "diff", '"\n"'
-  local template = table.concat({ "change_id.short()", "' '", "description", '"\n"' }, "++")
-  local log = vim.system({ "jj", "log", "--color", "never", "--no-graph", "-T", template }, {}, function(complete)
+  local template = table.concat({ "change_id.short()", "' '", "description", '"\n"', "diff.summary()", '"\n"' }, "++")
+  local cmd = { "jj", "log", "--color", "never", "--no-pager", "--no-graph", "-T", template }
+  local log = vim.system(cmd, {}, function(complete)
     local lines = vim.split(complete.stdout, "\n")
     vim.schedule(function()
+      vim.print(complete.stderr)
       -- write status
       vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
       vim.api.nvim_buf_set_lines(buf, 0, -1, true, lines)
@@ -36,6 +38,27 @@ function M.status()
       vim.api.nvim_win_set_buf(0, buf)
     end)
   end)
+end
+
+function M.show_file_diff()
+  local change_id = require("majjit.utils").cursor_word()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local buf = vim.fn.bufnr()
+
+  local diff_tool = 'ui.diff.tool=["difft", "--color=never", "$left", "$right"]'
+  vim.system(
+    { "jj", "show", "--config-toml", diff_tool, "--color", "never", "--no-pager", change_id, "-T", "''" },
+    {},
+    function(complete)
+      local lines = vim.split(complete.stdout, "\n")
+      vim.schedule(function()
+        vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
+        vim.api.nvim_buf_set_lines(buf, cursor[1], cursor[1], true, lines)
+
+        vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+      end)
+    end
+  )
 end
 
 --- uses word under cursor as change id
