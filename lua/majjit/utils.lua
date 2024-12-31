@@ -18,6 +18,27 @@ function M.root_dir()
   return root_dir
 end
 
+---@param cmd string[]
+---@param on_exit fun(string) -> nil
+function M.shell(cmd, on_exit)
+  vim.system(cmd, {}, function(args)
+    vim.schedule(function()
+      if args.code ~= 0 then
+        vim.print(args)
+      else
+        on_exit(args.stdout)
+      end
+    end)
+  end)
+end
+
+---@param args { start: integer, count: integer, win: integer }
+function M.fold(args)
+  vim.api.nvim_set_option_value("foldmethod", "manual", { win = args.win })
+  local final = args.start + args.count - 1
+  vim.cmd(args.start .. "," .. final .. " fold")
+end
+
 -- vim.keymap.set("n", "<localleader>cw", M.cursor_word, { desc = "cursor word" })
 
 return M
