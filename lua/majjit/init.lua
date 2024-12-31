@@ -98,22 +98,21 @@ end
 --- https://github.com/jj-vcs/jj/blob/main/docs/templates.md
 --- opens status buffer
 function M.status()
-  local working_copy = vim.system({ "jj", "show", "--summary", "--color", "never" }):wait(3000).stdout
-  ---@cast working_copy string
-  local log = vim.system({ "jj", "log", "--color", "never" }):wait(3000).stdout
-  ---@cast log string
-  local lines = vim.split(working_copy, "\n")
-  for line in vim.iter(vim.split(log, "\n")) do
-    table.insert(lines, line)
-  end
+  local template = table.concat({ "change_id", "' '", "description" }, "++")
+  vim.print(template)
+  local log = vim.system({ "jj", "log", "--color", "never", "-T", template }, {}, function(complete)
+    local lines = vim.split(complete.stdout, "\n")
 
-  -- write status
-  vim.api.nvim_set_option_value("modifiable", true, { buf = _G.majjit_status_buffer })
-  vim.api.nvim_buf_set_lines(_G.majjit_status_buffer, 0, -1, true, lines)
-  vim.api.nvim_set_option_value("modifiable", false, { buf = _G.majjit_status_buffer })
+    vim.schedule(function()
+      -- write status
+      vim.api.nvim_set_option_value("modifiable", true, { buf = _G.majjit_status_buffer })
+      vim.api.nvim_buf_set_lines(_G.majjit_status_buffer, 0, -1, true, lines)
+      vim.api.nvim_set_option_value("modifiable", false, { buf = _G.majjit_status_buffer })
 
-  -- jump to buffer
-  vim.api.nvim_win_set_buf(0, _G.majjit_status_buffer)
+      -- jump to buffer
+      vim.api.nvim_win_set_buf(0, _G.majjit_status_buffer)
+    end)
+  end)
 end
 
 vim.keymap.set("n", "<leader>jj", M.status, {})
