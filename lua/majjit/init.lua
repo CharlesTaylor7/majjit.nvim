@@ -26,6 +26,8 @@ function M.status()
 
   -- jump to buffer
   vim.api.nvim_win_set_buf(0, buf)
+  -- delete all folds
+  vim.fn.feedkeys("zE", "m")
 
   vim.keymap.set("n", "<localleader>m", M.describe, { buffer = buf, desc = "describe" })
   vim.keymap.set("n", "<localleader>a", M.abandon, { buffer = buf, desc = "abandon" })
@@ -37,7 +39,6 @@ function M.status()
   -- vim.keymap.set("n", "<localleader>ab", M.advance_bookmark, { buffer = buf, desc = "advance bookmark" })
   require("coop").spawn(function()
     local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'), '\n')"
-
     local cmd = { "jj", "log", "--no-pager", "--no-graph", "-T", template }
     local stdout = M.Utils.shell(cmd)
     local changes = vim.split(stdout, "\n")
