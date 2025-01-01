@@ -157,6 +157,7 @@ function M.describe()
 
   -- jump to buffer
   vim.api.nvim_win_set_buf(0, buf)
+  vim.fn.feedkeys("i", "m")
 end
 
 -- begin: testing
