@@ -4,6 +4,7 @@ M.Baleia = require("baleia").setup({})
 M.Folds = require("majjit.folds")
 M.Utils = require("majjit.utils")
 
+---@type DiffMode[]
 local DIFF_MODES = { "placeholder", "stat", "view", "select" }
 
 function M.setup()
@@ -15,16 +16,16 @@ end
 --- select mode is similar to jj's inbuilt split nested checkbox hierarchy
 ---@alias DiffMode "placeholder" | "stat" | "view" | "select"
 ---@alias ChangeId string
----@alias StatusFold { start: integer, count: integer }
----@alias Folds  table<ChangeId, StatusFold>
----@alias State { folds: Folds, diff_mode_index: integer }
+---@alias StatusFold { change: ChangeId, start: integer, count: integer }
+--- ---@alias Folds  table<ChangeId, StatusFold>
+---@alias State {  diff_mode_index: integer }
 
 --- https://github.com/jj-vcs/jj/blob/main/docs/templates.md
 --- opens status buffer
 function M.status()
   ---@type State
   M.state = {
-    folds = {},
+    --    folds = {},
     diff_mode_index = 0,
   }
 
@@ -63,16 +64,16 @@ function M.status()
     vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
     M.Baleia.buf_set_lines(buf, 0, -1, true, changes)
     vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
-
     local change = nil
     for i, line in ipairs(vim.api.nvim_buf_get_lines(buf, 0, -1, true)) do
       if line == placeholder then
         ---@cast change string
-        M.state.folds[change] = { start = i, count = 1 }
+        table.insert(M.state.folds, { change = change, start = i, count = 1 })
       else
         change = vim.split(line, " ")[1]
       end
     end
+    vim.print(M.state)
   end)
 end
 --
@@ -107,19 +108,17 @@ end
 --     local stdout = M.Utils.shell({ "jj", "show", "--no-pager", change_id, "-T", "''" })
 --     local diff = vim.split(stdout, "\n")
 
----@return DiffMode
-function M.diff_mode()
-  return DIFF_MODES[M.state.diff_mode_index + 1]
-end
-
 function M.toggle_diff_mode()
   M.state.diff_mode_index = math.fmod(M.state.diff_mode_index + 1, 4)
-  local change_id = M.Utils.cursor_word()
-  require("coop").spawn(function()
-    M.Utils.shell({ "jj", "new", change_id })
-    M.status()
-  end)
+
+  local mode = DIFF_MODES[M.state.diff_mode_index + 1]
+  if mode == "stat" then
+    M.diff_stat_all()
+  end
 end
+
+function M.diff_stat_all() end
+
 --- uses word under cursor as change id
 function M.new()
   local change_id = M.Utils.cursor_word()
