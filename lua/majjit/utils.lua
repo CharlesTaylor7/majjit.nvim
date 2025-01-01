@@ -24,6 +24,7 @@ function M.shell(cmd, on_exit)
   vim.system(cmd, {}, function(args)
     vim.schedule(function()
       if args.code ~= 0 then
+        ---@diagnostic disable-next-line
         args.cmd = cmd
         vim.print(args)
       else
@@ -31,6 +32,17 @@ function M.shell(cmd, on_exit)
       end
     end)
   end)
+end
+
+---@param cmd string[]
+---@return string
+function M.shell_blocking(cmd)
+  local result = vim.system(cmd):wait()
+  if result.code ~= 0 then
+    error(result.stderr)
+  else
+    return result.stdout
+  end
 end
 
 ---@param args { start: integer, count: integer, win: integer }
@@ -51,6 +63,5 @@ function M.index_of(table, value)
     end
   end
 end
--- vim.keymap.set("n", "<localleader>cw", M.cursor_word, { desc = "cursor word" })
 
 return M

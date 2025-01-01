@@ -33,28 +33,31 @@ function M.status()
   -- vim.keymap.set("n", "<localleader>p", M.git_push, { buffer = buf, desc = "git push" })
   -- vim.keymap.set("n", "<localleader>ab", M.advance_bookmark, { buffer = buf, desc = "advance bookmark" })
 
-  local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'))"
+  local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'), '\n')"
 
   local cmd = { "jj", "log", "--no-pager", "--no-graph", "-T", template }
   local log = M.Utils.shell(cmd, function(stdout)
-    local lines = vim.split(stdout, "\n")
+    local changes = vim.split(stdout, "\n")
+    table.remove(changes, vim.tbl_count(changes))
+
     -- write status
     vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
-    M.Baleia.buf_set_lines(buf, 0, -1, true, lines)
+    M.Baleia.buf_set_lines(buf, 0, -1, true, changes)
     vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
 
-    for line in vim.iter(vim.api.nvim_buf_get_lines(buf, 0, -1, true)) do
-      local change_id = vim.split(line, " ")[1]
-      M.Utils.shell({ "jj", "show", "--no-pager", change_id, "-T", "''" }, function(stdout)
-        local buflines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
-        local start = M.Utils.index_of(buflines, line)
+    local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
+    vim.print(vim.tbl_count(lines))
 
-        local diff = vim.split(stdout, "\n")
-        vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
-        M.Baleia.buf_set_lines(buf, start, start, true, diff)
-        vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
-        M.Utils.fold({ win = 0, start = start + 1, count = vim.tbl_count(diff) })
-      end)
+    local offset = 0
+    for i, line in ipairs(lines) do
+      local change_id = vim.split(line, " ")[1]
+      local stdout = M.Utils.shell_blocking({ "jj", "show", "--no-pager", change_id, "-T", "''" })
+      local diff = vim.split(stdout, "\n")
+      vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
+      M.Baleia.buf_set_lines(buf, i + offset, i + offset, true, diff)
+      vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+      M.Utils.fold({ win = 0, start = i + 1 + offset, count = vim.tbl_count(diff) })
+      offset = offset + vim.tbl_count(diff)
     end
   end)
 end
