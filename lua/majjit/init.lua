@@ -35,11 +35,11 @@ function M.status()
   -- vim.keymap.set("n", "<tab>", M.show_file_diff, { buffer = buf, desc = "new change" })
   -- vim.keymap.set("n", "<localleader>p", M.git_push, { buffer = buf, desc = "git push" })
   -- vim.keymap.set("n", "<localleader>ab", M.advance_bookmark, { buffer = buf, desc = "advance bookmark" })
+  require("coop").spawn(function()
+    local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'), '\n')"
 
-  local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'), '\n')"
-
-  local cmd = { "jj", "log", "--no-pager", "--no-graph", "-T", template }
-  local log = M.Utils.shell(cmd, function(stdout)
+    local cmd = { "jj", "log", "--no-pager", "--no-graph", "-T", template }
+    local stdout = M.Utils.shell(cmd)
     local changes = vim.split(stdout, "\n")
 
     -- write status
@@ -48,13 +48,12 @@ function M.status()
     vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
 
     local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
-    vim.print(vim.tbl_count(lines))
 
     local offset = 0
     for i, line in ipairs(lines) do
       local change_id = vim.split(line, " ")[1]
       if change_id ~= "" and change_id ~= nil then
-        local stdout = M.Utils.shell_blocking({ "jj", "show", "--no-pager", change_id, "-T", "''" })
+        local stdout = M.Utils.shell({ "jj", "show", "--no-pager", change_id, "-T", "''" })
         local diff = vim.split(stdout, "\n")
         local start = i + offset + 1
         vim.api.nvim_set_option_value("modifiable", true, { buf = buf })

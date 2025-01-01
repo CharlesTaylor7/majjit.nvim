@@ -18,9 +18,16 @@ function M.root_dir()
   return root_dir
 end
 
+function M.coop_wrap(fun)
+  local cb_to_tf = require("coop.task-utils").cb_to_tf
+  local shift_parameters = require("coop.functional-utils").shift_parameters
+
+  return cb_to_tf(shift_parameters(fun))
+end
+
 ---@param cmd string[]
 ---@param on_exit fun(string) -> nil
-function M.shell(cmd, on_exit)
+local function shell(cmd, on_exit)
   vim.system(cmd, {}, function(args)
     vim.schedule(function()
       if args.code ~= 0 then
@@ -33,19 +40,21 @@ function M.shell(cmd, on_exit)
     end)
   end)
 end
+M.shell = M.coop_wrap(shell)
 
----@param cmd string[]
----@return string
-function M.shell_blocking(cmd)
-  local result = vim.system(cmd):wait()
-  if result.code ~= 0 then
-    error(result.stderr)
-  else
-    return result.stdout
-  end
-end
-
----@param args { start: integer, count: integer, win: integer }
+--
+-- ---@param cmd string[]
+-- ---@return string
+-- function M.shell_blocking(cmd)
+--   local result = vim.system(cmd):wait()
+--   if result.code ~= 0 then
+--     error(result.stderr)
+--   else
+--     return result.stdout
+--   end
+-- end
+--
+-- ---@param args { start: integer, count: integer, win: integer }
 function M.fold(args)
   if args.count <= 0 then
     vim.print("can't fold backwards")
