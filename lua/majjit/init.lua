@@ -38,7 +38,6 @@ function M.status()
   local cmd = { "jj", "log", "--no-pager", "--no-graph", "-T", template }
   local log = M.Utils.shell(cmd, function(stdout)
     local changes = vim.split(stdout, "\n")
-    table.remove(changes, vim.tbl_count(changes))
 
     -- write status
     vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
@@ -51,13 +50,15 @@ function M.status()
     local offset = 0
     for i, line in ipairs(lines) do
       local change_id = vim.split(line, " ")[1]
-      local stdout = M.Utils.shell_blocking({ "jj", "show", "--no-pager", change_id, "-T", "''" })
-      local diff = vim.split(stdout, "\n")
-      vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
-      M.Baleia.buf_set_lines(buf, i + offset, i + offset, true, diff)
-      vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
-      M.Utils.fold({ win = 0, start = i + 1 + offset, count = vim.tbl_count(diff) })
-      offset = offset + vim.tbl_count(diff)
+      if change_id ~= "" and change_id ~= nil then
+        local stdout = M.Utils.shell_blocking({ "jj", "show", "--no-pager", change_id, "-T", "''" })
+        local diff = vim.split(stdout, "\n")
+        vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
+        M.Baleia.buf_set_lines(buf, i + offset, i + offset, true, diff)
+        vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+        M.Utils.fold({ win = 0, start = i + 1 + offset, count = vim.tbl_count(diff) })
+        offset = offset + vim.tbl_count(diff)
+      end
     end
   end)
 end
