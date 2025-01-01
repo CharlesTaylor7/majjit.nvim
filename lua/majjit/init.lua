@@ -75,24 +75,24 @@ function M.status()
   end)
 end
 
+---@param line integer
+---@param info string
+local function set_change_info(line, info)
+  local marks = vim.api.nvim_buf_get_extmarks(vim.g.status_buf, vim.g.majjit_ns, line, -1, {})
+
+  vim.api.nvim_set_option_value("modifiable", true, { buf = vim.g.status_buf })
+  M.Baleia.buf_set_lines(vim.g.status_buf, line, marks[1][2], true, vim.split(info, "\n"))
+  vim.api.nvim_set_option_value("modifiable", false, { buf = vim.g.status_buf })
+end
+
 function M.diff_stat()
   local change_id = M.Utils.cursor_word()
   local cursor = vim.api.nvim_win_get_cursor(0)
   require("coop").spawn(function()
     local stat = M.Utils.shell({ "jj", "show", change_id, "--stat", "-T", "" })
-    local marks = vim.api.nvim_buf_get_extmarks(vim.g.status_buf, vim.g.majjit_ns, { cursor[1], 0 }, -1, {})
-    vim.print(marks)
-    local next_commit_line = marks[1][2]
-    local start = cursor[1]
-    local final = marks[1][2]
-    vim.print({ start = start, final = final })
-
-    vim.api.nvim_set_option_value("modifiable", true, { buf = vim.g.status_buf })
-    M.Baleia.buf_set_lines(vim.g.status_buf, start, final, true, vim.split(stat, "\n"))
-    vim.api.nvim_set_option_value("modifiable", false, { buf = vim.g.status_buf })
+    set_change_info(cursor[1], stat)
   end)
 end
-
 --- uses word under cursor as change id
 function M.new()
   local change_id = M.Utils.cursor_word()
