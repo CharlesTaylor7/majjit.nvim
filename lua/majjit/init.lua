@@ -28,14 +28,14 @@ function M.status()
     changes = {},
   }
 
-  local buf = vim.g.status_buf
+  local buf = vim.g.majjit_status_buf
   if not buf then
     buf = vim.api.nvim_create_buf(false, false)
     vim.api.nvim_buf_set_name(buf, "majjit://status")
     vim.api.nvim_set_option_value("filetype", "majjit", { buf = buf })
     vim.api.nvim_set_option_value("buftype", "nowrite", { buf = buf })
     vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
-    vim.g.status_buf = buf
+    vim.g.majjit_status_buf = buf
   end
 
   -- jump to buffer
@@ -78,15 +78,30 @@ end
 ---@param line integer
 ---@param info string
 local function set_change_info(line, info)
-  local marks = vim.api.nvim_buf_get_extmarks(vim.g.status_buf, vim.g.majjit_ns, { line, 0 }, -1, {})
+  local marks = vim.api.nvim_buf_get_extmarks(vim.g.majjit_status_buf, vim.g.majjit_ns, { line, 0 }, -1, {})
 
-  vim.api.nvim_set_option_value("modifiable", true, { buf = vim.g.status_buf })
-  M.Baleia.buf_set_lines(vim.g.status_buf, line, marks[1][2], true, vim.split(info, "\n"))
-  vim.api.nvim_set_option_value("modifiable", false, { buf = vim.g.status_buf })
+  vim.api.nvim_set_option_value("modifiable", true, { buf = vim.g.majjit_status_buf })
+  M.Baleia.buf_set_lines(vim.g.majjit_status_buf, line, marks[1][2], true, vim.split(info, "\n"))
+  vim.api.nvim_set_option_value("modifiable", false, { buf = vim.g.majjit_status_buf })
+end
+
+local function get_cursor_change_id()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local marks = vim.api.nvim_buf_get_extmarks(
+    vim.g.majjit_status_buf or 0,
+    vim.g.majjit_ns,
+    { cursor[1], 0 },
+    { cursor[1], -1 },
+    {}
+  )
+  vim.print(marks)
+  local change = M.state.changes[marks[1]]
+  vim.print(change)
+  return change
 end
 
 function M.diff_stat()
-  local change_id = M.Utils.cursor_word()
+  local change_id = get_cursor_change_id()
   local cursor = vim.api.nvim_win_get_cursor(0)
   require("coop").spawn(function()
     local stat = M.Utils.shell({ "jj", "show", change_id, "--stat", "-T", "" })
@@ -95,7 +110,7 @@ function M.diff_stat()
 end
 --- uses word under cursor as change id
 function M.new()
-  local change_id = M.Utils.cursor_word()
+  local change_id = get_cursor_change_id()
   require("coop").spawn(function()
     M.Utils.shell({ "jj", "new", change_id })
     M.status()
@@ -104,7 +119,7 @@ end
 
 --- uses word under cursor as change id
 function M.absorb()
-  local change_id = M.Utils.cursor_word()
+  local change_id = get_cursor_change_id()
 
   require("coop").spawn(function()
     M.Utils.shell({ "jj", "absorb", "--from", change_id })
@@ -114,7 +129,7 @@ end
 
 --- uses word under cursor as change id
 function M.squash()
-  local change_id = M.Utils.cursor_word()
+  local change_id = get_cursor_change_id()
 
   require("coop").spawn(function()
     M.Utils.shell({ "jj", "squash", "--revision", change_id })
@@ -124,17 +139,16 @@ end
 
 --- uses word under cursor as change id
 function M.abandon()
-  local change_id = M.Utils.cursor_word()
+  local change_id = get_cursor_change_id()
 
   require("coop").spawn(function()
     M.Utils.shell({ "jj", "abandon", change_id })
     M.status()
   end)
 end
-
 --- uses word under cursor as change id
 function M.describe()
-  local change_id = M.Utils.cursor_word()
+  local change_id = get_cursor_change_id()
   local buf = vim.api.nvim_create_buf(false, false)
   vim.api.nvim_buf_set_name(buf, "majjit://describe")
   vim.api.nvim_set_option_value("filetype", "jj", { buf = buf })
@@ -156,7 +170,8 @@ function M.describe()
   })
 
   -- jump to buffer
-  vim.api.nvim_win_set_buf(0, buf)
+  -- vim.api.nvim_win_set_buf(0, buf)
+  M.Utils.popup(buf)
   vim.fn.feedkeys("i", "m")
 end
 

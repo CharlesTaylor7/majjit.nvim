@@ -41,7 +41,7 @@ local function shell(cmd, on_exit)
   end)
 end
 M.shell = M.coop_wrap(shell)
-M.pause = M.coop_wrap(vim.schedule)
+M.sleep = require("coop.uv-utils").sleep
 
 ---@generic T
 ---@param table T[]
@@ -53,6 +53,30 @@ function M.index_of(table, value)
       return i
     end
   end
+end
+
+---@param buf integer
+function M.popup(buf)
+  local win = vim.api.nvim_open_win(buf, true, {
+    relative = "editor",
+    border = "rounded",
+    noautocmd = false,
+    col = 5,
+    row = 5,
+    width = vim.o.columns - 10,
+    height = vim.o.lines - 15,
+  })
+  vim.api.nvim_set_option_value("winhl", "Normal:NormalFloat", {})
+  vim.api.nvim_create_autocmd("WinLeave", {
+    group = vim.api.nvim_create_augroup("popup", {}),
+    callback = function()
+      if vim.api.nvim_get_current_win() == win then
+        vim.api.nvim_win_close(win, false)
+      end
+    end,
+  })
+
+  return win
 end
 
 return M
