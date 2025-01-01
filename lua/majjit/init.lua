@@ -70,7 +70,8 @@ end
 --- uses word under cursor as change id
 function M.new()
   local change_id = M.Utils.cursor_word()
-  M.Utils.shell({ "jj", "new", change_id }, function()
+  require("coop").spawn(function()
+    M.Utils.shell({ "jj", "new", change_id })
     M.status()
   end)
 end
@@ -78,7 +79,9 @@ end
 --- uses word under cursor as change id
 function M.absorb()
   local change_id = M.Utils.cursor_word()
-  M.Utils.shell({ "jj", "absorb", "--from", change_id }, function()
+
+  require("coop").spawn(function()
+    M.Utils.shell({ "jj", "absorb", "--from", change_id })
     M.status()
   end)
 end
@@ -86,17 +89,15 @@ end
 --- uses word under cursor as change id
 function M.squash()
   local change_id = M.Utils.cursor_word()
-  M.Utils.shell({ "jj", "squash", "--revision", change_id }, function()
-    M.status()
-  end)
+  M.Utils.shell({ "jj", "squash", "--revision", change_id })
+  M.status()
 end
 
 --- uses word under cursor as change id
 function M.abandon()
   local change_id = M.Utils.cursor_word()
-  M.Utils.shell({ "jj", "abandon", change_id }, function()
-    M.status()
-  end)
+  M.Utils.shell({ "jj", "abandon", change_id })
+  M.status()
 end
 
 --- uses word under cursor as change id
@@ -111,8 +112,9 @@ function M.describe()
   vim.api.nvim_create_autocmd("BufWriteCmd", {
     buffer = buf,
     callback = function(args)
-      local message = table.concat(vim.api.nvim_buf_get_lines(args.buf, 0, -1, true), "\n")
-      M.Utils.shell({ "jj", "describe", "-r", change_id, "-m", message }, function()
+      require("coop").spawn(function()
+        local message = table.concat(vim.api.nvim_buf_get_lines(args.buf, 0, -1, true), "\n")
+        local stdout = M.Utils.shell({ "jj", "describe", "-r", change_id, "-m", message })
         -- expected for the "BufWriteCmd" event
         vim.api.nvim_set_option_value("modified", false, { buf = args.buf })
         -- return to status buffer
