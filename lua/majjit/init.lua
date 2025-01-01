@@ -1,6 +1,5 @@
 local M = {}
 
-M.Baleia = require("baleia").setup({})
 M.Folds = require("majjit.folds")
 M.Utils = require("majjit.utils")
 
@@ -8,6 +7,8 @@ M.Utils = require("majjit.utils")
 local DIFF_MODES = { "placeholder", "stat", "view", "select" }
 
 function M.setup()
+  M.Baleia = require("baleia").setup({})
+  M.ns = vim.api.nvim_create_namespace("myplugin")
   vim.keymap.set("n", "<leader>jj", M.status, {})
 end
 
@@ -18,15 +19,16 @@ end
 ---@alias ChangeId string
 ---@alias StatusFold { change: ChangeId, start: integer, count: integer }
 --- ---@alias Folds  table<ChangeId, StatusFold>
----@alias State {  diff_mode_index: integer }
+---@alias ExtmarkId integer
+---@alias State {  diff_mode_index: integer, changes: table}
 
 --- https://github.com/jj-vcs/jj/blob/main/docs/templates.md
 --- opens status buffer
 function M.status()
   ---@type State
   M.state = {
-    --    folds = {},
     diff_mode_index = 0,
+    changes = {},
   }
 
   local buf = vim.g.status_buf
@@ -54,9 +56,8 @@ function M.status()
   vim.keymap.set("n", "<localleader>n", M.new, { buffer = buf, desc = "new change" })
   vim.keymap.set("n", "<tab>", M.toggle_diff_mode, { buffer = buf, desc = "toggle diff mode" })
 
-  local placeholder = "  ..."
   require("coop").spawn(function()
-    local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'), '  ...\n')"
+    local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'))"
     local stdout = M.Utils.shell({ "jj", "log", "--no-pager", "--no-graph", "-T", template })
     local changes = vim.split(stdout, "\n")
 
@@ -64,16 +65,16 @@ function M.status()
     vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
     M.Baleia.buf_set_lines(buf, 0, -1, true, changes)
     vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
-    local change = nil
-    for i, line in ipairs(vim.api.nvim_buf_get_lines(buf, 0, -1, true)) do
-      if line == placeholder then
-        ---@cast change string
-        table.insert(M.state.folds, { change = change, start = i, count = 1 })
-      else
-        change = vim.split(line, " ")[1]
+
+    local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
+    for i, line in ipairs(lines) do
+      local change = vim.split(line, " ")[1]
+      if change ~= "" then
+        local mark_id = vim.api.nvim_buf_set_extmark(buf, M.ns, i, 0, {})
+        M.state.changes[change] = mark_id
+        M.state.changes[mark_id] = change
       end
     end
-    vim.print(M.state)
   end)
 end
 --
