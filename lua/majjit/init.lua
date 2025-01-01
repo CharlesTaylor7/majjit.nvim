@@ -33,7 +33,7 @@ function M.status()
   -- vim.keymap.set("n", "<localleader>p", M.git_push, { buffer = buf, desc = "git push" })
   -- vim.keymap.set("n", "<localleader>ab", M.advance_bookmark, { buffer = buf, desc = "advance bookmark" })
 
-  local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n')"
+  local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'))"
 
   local cmd = { "jj", "log", "--no-pager", "--no-graph", "-T", template }
   local log = M.Utils.shell(cmd, function(stdout)

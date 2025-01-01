@@ -24,6 +24,7 @@ function M.shell(cmd, on_exit)
   vim.system(cmd, {}, function(args)
     vim.schedule(function()
       if args.code ~= 0 then
+        args.cmd = cmd
         vim.print(args)
       else
         on_exit(args.stdout)
