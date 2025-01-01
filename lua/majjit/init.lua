@@ -53,8 +53,9 @@ function M.status()
   vim.keymap.set("n", "<localleader>n", M.new, { buffer = buf, desc = "new change" })
   vim.keymap.set("n", "<tab>", M.toggle_diff_mode, { buffer = buf, desc = "toggle diff mode" })
 
+  local placeholder = "  ..."
   require("coop").spawn(function()
-    local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'), '\n')"
+    local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'), '  ...\n')"
     local stdout = M.Utils.shell({ "jj", "log", "--no-pager", "--no-graph", "-T", template })
     local changes = vim.split(stdout, "\n")
 
@@ -63,38 +64,48 @@ function M.status()
     M.Baleia.buf_set_lines(buf, 0, -1, true, changes)
     vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
 
-    local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
-    local offset = 0
-
-    for i, line in ipairs(lines) do
-      local change_id = vim.split(line, " ")[1]
-      if change_id ~= "" and change_id ~= nil then
-        local start = i + offset + 1
-        M.state.folds[change_id] = { start = start, count = 1 }
-        offset = offset + 1
-
-        -- vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
-        -- M.Baleia.buf_set_lines(buf, start, start, true, { "placeholder" })
-        -- vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
-        -- M.Folds.create({ start = start + 1, count = 1 })
-        -- vim.tbl_count(diff)
+    local change = nil
+    for i, line in ipairs(vim.api.nvim_buf_get_lines(buf, 0, -1, true)) do
+      if line == placeholder then
+        ---@cast change string
+        M.state.folds[change] = { start = i, count = 1 }
+      else
+        change = vim.split(line, " ")[1]
       end
     end
-    -- require("coop.uv-utils").sleep(0)
-    -- M.Utils.pause()
-
-    vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
-    M.Baleia.buf_set_lines(buf, 1, 2, true, { "  placeholder" })
-    vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
-    -- for change, fold in pairs(M.state.folds) do
-    --   M.Baleia.buf_set_lines(buf, fold.start, fold.start, true, { "placeholder" })
-    --   M.Folds.create(fold)
-    -- end
-    --
-    --     local stdout = M.Utils.shell({ "jj", "show", "--no-pager", change_id, "-T", "''" })
-    --     local diff = vim.split(stdout, "\n")
   end)
 end
+--
+-- local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
+-- local offset = 0
+--
+-- for i, line in ipairs(lines) do
+--   local change_id = vim.split(line, " ")[1]
+--   if change_id ~= "" and change_id ~= nil then
+--     local start = i + offset + 1
+--     M.state.folds[change_id] = { start = start, count = 1 }
+--     offset = offset + 1
+--
+--     -- vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
+--     -- M.Baleia.buf_set_lines(buf, start, start, true, { "placeholder" })
+--     -- vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+--     -- M.Folds.create({ start = start + 1, count = 1 })
+--     -- vim.tbl_count(diff)
+--   end
+-- end
+-- require("coop.uv-utils").sleep(0)
+-- M.Utils.pause()
+
+-- vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
+-- M.Baleia.buf_set_lines(buf, 1, 2, true, { "  placeholder" })
+-- vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+-- for change, fold in pairs(M.state.folds) do
+--   M.Baleia.buf_set_lines(buf, fold.start, fold.start, true, { "placeholder" })
+--   M.Folds.create(fold)
+-- end
+--
+--     local stdout = M.Utils.shell({ "jj", "show", "--no-pager", change_id, "-T", "''" })
+--     local diff = vim.split(stdout, "\n")
 
 ---@return DiffMode
 function M.diff_mode()
@@ -131,15 +142,21 @@ end
 --- uses word under cursor as change id
 function M.squash()
   local change_id = M.Utils.cursor_word()
-  M.Utils.shell({ "jj", "squash", "--revision", change_id })
-  M.status()
+
+  require("coop").spawn(function()
+    M.Utils.shell({ "jj", "squash", "--revision", change_id })
+    M.status()
+  end)
 end
 
 --- uses word under cursor as change id
 function M.abandon()
   local change_id = M.Utils.cursor_word()
-  M.Utils.shell({ "jj", "abandon", change_id })
-  M.status()
+
+  require("coop").spawn(function()
+    M.Utils.shell({ "jj", "abandon", change_id })
+    M.status()
+  end)
 end
 
 --- uses word under cursor as change id
