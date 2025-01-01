@@ -1,19 +1,33 @@
 local M = {}
 
+M.Baleia = require("baleia").setup({})
+M.Folds = require("majjit.folds")
+M.Utils = require("majjit.utils")
+
+local DIFF_MODES = { "placeholder", "stat", "view", "select" }
+
 function M.setup()
-  M.Utils = require("majjit.utils")
-  M.Baleia = require("baleia").setup({})
   vim.keymap.set("n", "<leader>jj", M.status, {})
 end
 
 --- stat mode is historgram from --stat
 --- view mode is the configured diff tool's view
 --- select mode is similar to jj's inbuilt split nested checkbox hierarchy
----@alias DiffMode "stat" | "view" | "select"
+---@alias DiffMode "placeholder" | "stat" | "view" | "select"
+---@alias ChangeId string
+---@alias StatusFold { start: integer, count: integer }
+---@alias Folds  table<ChangeId, StatusFold>
+---@alias State { folds: Folds, diff_mode_index: integer }
 
 --- https://github.com/jj-vcs/jj/blob/main/docs/templates.md
 --- opens status buffer
 function M.status()
+  ---@type State
+  M.state = {
+    folds = {},
+    diff_mode_index = 0,
+  }
+
   local buf = vim.g.status_buf
   if not buf then
     buf = vim.api.nvim_create_buf(false, false)
@@ -25,22 +39,23 @@ function M.status()
   end
 
   -- jump to buffer
-  vim.api.nvim_win_set_buf(0, buf)
-  -- delete all folds
-  vim.fn.feedkeys("zE", "m")
+  local win = 0
+  vim.api.nvim_win_set_buf(win, buf)
+
+  -- delete folds
+  vim.api.nvim_set_option_value("foldmethod", "manual", { win = win })
+  M.Folds.delete_all()
 
   vim.keymap.set("n", "<localleader>m", M.describe, { buffer = buf, desc = "describe" })
   vim.keymap.set("n", "<localleader>a", M.abandon, { buffer = buf, desc = "abandon" })
   vim.keymap.set("n", "<localleader>s", M.squash, { buffer = buf, desc = "squash" })
   vim.keymap.set("n", "<localleader>w", M.absorb, { buffer = buf, desc = "absorb" })
   vim.keymap.set("n", "<localleader>n", M.new, { buffer = buf, desc = "new change" })
-  -- vim.keymap.set("n", "<tab>", M.show_file_diff, { buffer = buf, desc = "new change" })
-  -- vim.keymap.set("n", "<localleader>p", M.git_push, { buffer = buf, desc = "git push" })
-  -- vim.keymap.set("n", "<localleader>ab", M.advance_bookmark, { buffer = buf, desc = "advance bookmark" })
+  vim.keymap.set("n", "<tab>", M.toggle_diff_mode, { buffer = buf, desc = "toggle diff mode" })
+
   require("coop").spawn(function()
     local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'), '\n')"
-    local cmd = { "jj", "log", "--no-pager", "--no-graph", "-T", template }
-    local stdout = M.Utils.shell(cmd)
+    local stdout = M.Utils.shell({ "jj", "log", "--no-pager", "--no-graph", "-T", template })
     local changes = vim.split(stdout, "\n")
 
     -- write status
@@ -49,24 +64,51 @@ function M.status()
     vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
 
     local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
-
     local offset = 0
+
     for i, line in ipairs(lines) do
       local change_id = vim.split(line, " ")[1]
       if change_id ~= "" and change_id ~= nil then
-        local stdout = M.Utils.shell({ "jj", "show", "--no-pager", change_id, "-T", "''" })
-        local diff = vim.split(stdout, "\n")
         local start = i + offset + 1
-        vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
-        M.Baleia.buf_set_lines(buf, start, start, true, diff)
-        vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
-        M.Utils.fold({ win = 0, start = start + 1, count = vim.tbl_count(diff) - 2 })
-        offset = offset + vim.tbl_count(diff)
+        M.state.folds[change_id] = { start = start, count = 1 }
+        offset = offset + 1
+
+        -- vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
+        -- M.Baleia.buf_set_lines(buf, start, start, true, { "placeholder" })
+        -- vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+        -- M.Folds.create({ start = start + 1, count = 1 })
+        -- vim.tbl_count(diff)
       end
     end
+    -- require("coop.uv-utils").sleep(0)
+    -- M.Utils.pause()
+
+    vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
+    M.Baleia.buf_set_lines(buf, 1, 2, true, { "  placeholder" })
+    vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+    -- for change, fold in pairs(M.state.folds) do
+    --   M.Baleia.buf_set_lines(buf, fold.start, fold.start, true, { "placeholder" })
+    --   M.Folds.create(fold)
+    -- end
+    --
+    --     local stdout = M.Utils.shell({ "jj", "show", "--no-pager", change_id, "-T", "''" })
+    --     local diff = vim.split(stdout, "\n")
   end)
 end
 
+---@return DiffMode
+function M.diff_mode()
+  return DIFF_MODES[M.state.diff_mode_index + 1]
+end
+
+function M.toggle_diff_mode()
+  M.state.diff_mode_index = math.fmod(M.state.diff_mode_index + 1, 4)
+  local change_id = M.Utils.cursor_word()
+  require("coop").spawn(function()
+    M.Utils.shell({ "jj", "new", change_id })
+    M.status()
+  end)
+end
 --- uses word under cursor as change id
 function M.new()
   local change_id = M.Utils.cursor_word()
@@ -130,6 +172,7 @@ end
 -- begin: testing
 local function reload()
   package.loaded["majjit.utils"] = nil
+  package.loaded["majjit.folds"] = nil
   package.loaded["majjit.health"] = nil
   package.loaded["majjit"] = nil
   M.setup()

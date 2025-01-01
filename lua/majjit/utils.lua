@@ -41,29 +41,7 @@ local function shell(cmd, on_exit)
   end)
 end
 M.shell = M.coop_wrap(shell)
-
---
--- ---@param cmd string[]
--- ---@return string
--- function M.shell_blocking(cmd)
---   local result = vim.system(cmd):wait()
---   if result.code ~= 0 then
---     error(result.stderr)
---   else
---     return result.stdout
---   end
--- end
---
--- ---@param args { start: integer, count: integer, win: integer }
-function M.fold(args)
-  if args.count <= 0 then
-    vim.print("can't fold backwards")
-    return
-  end
-  vim.api.nvim_set_option_value("foldmethod", "manual", { win = args.win })
-  local final = args.start + args.count - 1
-  vim.cmd(args.start .. "," .. final .. " fold")
-end
+M.pause = M.coop_wrap(vim.schedule)
 
 ---@generic T
 ---@param table T[]
