@@ -47,6 +47,10 @@ end
 
 ---@param args { start: integer, count: integer, win: integer }
 function M.fold(args)
+  if args.count <= 0 then
+    vim.print("can't fold backwards")
+    return
+  end
   vim.api.nvim_set_option_value("foldmethod", "manual", { win = args.win })
   local final = args.start + args.count - 1
   vim.cmd(args.start .. "," .. final .. " fold")
