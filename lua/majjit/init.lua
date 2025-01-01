@@ -78,7 +78,7 @@ end
 ---@param line integer
 ---@param info string
 local function set_change_info(line, info)
-  local marks = vim.api.nvim_buf_get_extmarks(vim.g.status_buf, vim.g.majjit_ns, line, -1, {})
+  local marks = vim.api.nvim_buf_get_extmarks(vim.g.status_buf, vim.g.majjit_ns, { line, 0 }, -1, {})
 
   vim.api.nvim_set_option_value("modifiable", true, { buf = vim.g.status_buf })
   M.Baleia.buf_set_lines(vim.g.status_buf, line, marks[1][2], true, vim.split(info, "\n"))
