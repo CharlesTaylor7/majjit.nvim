@@ -14,12 +14,15 @@ end
 --- https://github.com/jj-vcs/jj/blob/main/docs/templates.md
 --- opens status buffer
 function M.status()
-  local buf = vim.api.nvim_create_buf(false, false)
-  vim.api.nvim_buf_set_name(buf, "majjit://status")
-  vim.api.nvim_set_option_value("filetype", "majjit", { buf = buf })
-  vim.api.nvim_set_option_value("buftype", "nowrite", { buf = buf })
-  vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = buf })
-  vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+  local buf = vim.g.status_buf
+  if not buf then
+    buf = vim.api.nvim_create_buf(false, false)
+    vim.api.nvim_buf_set_name(buf, "majjit://status")
+    vim.api.nvim_set_option_value("filetype", "majjit", { buf = buf })
+    vim.api.nvim_set_option_value("buftype", "nowrite", { buf = buf })
+    vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+    vim.g.status_buf = buf
+  end
 
   -- jump to buffer
   vim.api.nvim_win_set_buf(0, buf)
@@ -53,10 +56,11 @@ function M.status()
       if change_id ~= "" and change_id ~= nil then
         local stdout = M.Utils.shell_blocking({ "jj", "show", "--no-pager", change_id, "-T", "''" })
         local diff = vim.split(stdout, "\n")
+        local start = i + offset + 1
         vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
-        M.Baleia.buf_set_lines(buf, i + offset, i + offset, true, diff)
+        M.Baleia.buf_set_lines(buf, start, start, true, diff)
         vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
-        M.Utils.fold({ win = 0, start = i + 1 + offset, count = vim.tbl_count(diff) })
+        M.Utils.fold({ win = 0, start = start + 1, count = vim.tbl_count(diff) - 2 })
         offset = offset + vim.tbl_count(diff)
       end
     end
