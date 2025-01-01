@@ -93,38 +93,6 @@ function M.diff_stat()
   end)
 end
 
---
--- local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
--- local offset = 0
---
--- for i, line in ipairs(lines) do
---   local change_id = vim.split(line, " ")[1]
---   if change_id ~= "" and change_id ~= nil then
---     local start = i + offset + 1
---     M.state.folds[change_id] = { start = start, count = 1 }
---     offset = offset + 1
---
---     -- vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
---     -- M.Baleia.buf_set_lines(buf, start, start, true, { "placeholder" })
---     -- vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
---     -- M.Folds.create({ start = start + 1, count = 1 })
---     -- vim.tbl_count(diff)
---   end
--- end
--- require("coop.uv-utils").sleep(0)
--- M.Utils.pause()
-
--- vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
--- M.Baleia.buf_set_lines(buf, 1, 2, true, { "  placeholder" })
--- vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
--- for change, fold in pairs(M.state.folds) do
---   M.Baleia.buf_set_lines(buf, fold.start, fold.start, true, { "placeholder" })
---   M.Folds.create(fold)
--- end
---
---     local stdout = M.Utils.shell({ "jj", "show", "--no-pager", change_id, "-T", "''" })
---     local diff = vim.split(stdout, "\n")
-
 --- uses word under cursor as change id
 function M.new()
   local change_id = M.Utils.cursor_word()
