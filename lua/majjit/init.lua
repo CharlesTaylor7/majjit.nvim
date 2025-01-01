@@ -51,23 +51,24 @@ function M.status()
   vim.keymap.set("n", "<localleader>s", M.squash, { buffer = buf, desc = "squash" })
   vim.keymap.set("n", "<localleader>w", M.absorb, { buffer = buf, desc = "absorb" })
   vim.keymap.set("n", "<localleader>n", M.new, { buffer = buf, desc = "new change" })
-  vim.keymap.set("n", "<tab>", M.diff_stat, { buffer = buf, desc = "toggle diff mode" })
+  vim.keymap.set("n", "<c-s>", M.diff_stat, { buffer = buf, desc = "toggle diff mode" })
+  vim.keymap.set("n", "<c-v>", M.diff_view, { buffer = buf, desc = "toggle diff mode" })
+  vim.keymap.set("n", "<c-e>", M.diff_select, { buffer = buf, desc = "toggle diff mode" })
 
   require("coop").spawn(function()
     local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'))"
-    local stdout = M.Utils.shell({ "jj", "log", "--no-pager", "--no-graph", "-T", template })
+    local stdout = M.Utils.shell({ "jj", "log", "--no-color", "--no-pager", "--no-graph", "-T", template })
     local changes = vim.split(stdout, "\n")
 
     -- write status
     vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
-    M.Baleia.buf_set_lines(buf, 0, -1, true, changes)
+    vim.g.nvim_buf_set_lines(buf, 0, -1, true, changes)
     vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
 
-    local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
-    for i, line in ipairs(lines) do
+    for i, line in ipairs(changes) do
       local change = vim.split(line, " ")[1]
       if change ~= "" then
-        local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i, 0, {})
+        local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i, 0, { hl_group = "ChangeId" })
         M.state.changes[change] = mark_id
         M.state.changes[mark_id] = change
       end
@@ -87,17 +88,9 @@ end
 
 local function get_cursor_change_id()
   local cursor = vim.api.nvim_win_get_cursor(0)
-  local marks = vim.api.nvim_buf_get_extmarks(
-    vim.g.majjit_status_buf or 0,
-    vim.g.majjit_ns,
-    { cursor[1], 0 },
-    { cursor[1], -1 },
-    {}
-  )
-  vim.print(marks)
-  local change = M.state.changes[marks[1]]
-  vim.print(change)
-  return change
+  local marks = vim.api.nvim_buf_get_extmarks(0, vim.g.majjit_ns, { cursor[1], 0 }, { cursor[1], -1 }, {})
+
+  return M.state.changes[marks[1][1]]
 end
 
 function M.diff_stat()
@@ -108,6 +101,26 @@ function M.diff_stat()
     set_change_info(cursor[1], stat)
   end)
 end
+
+function M.diff_view()
+  local change_id = get_cursor_change_id()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  require("coop").spawn(function()
+    local diff = M.Utils.shell({ "jj", "show", change_id, "-T", "" })
+    set_change_info(cursor[1], diff)
+  end)
+end
+
+--todo: research what jj split does for this
+function M.diff_select()
+  local change_id = get_cursor_change_id()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  require("coop").spawn(function()
+    local diff = M.Utils.shell({ "jj", "show", change_id, "--git", "-T", "" })
+    set_change_info(cursor[1], diff)
+  end)
+end
+
 --- uses word under cursor as change id
 function M.new()
   local change_id = get_cursor_change_id()
@@ -171,7 +184,8 @@ function M.describe()
 
   -- jump to buffer
   -- vim.api.nvim_win_set_buf(0, buf)
-  M.Utils.popup(buf)
+  local win = M.Utils.popup(buf)
+  vim.api.nvim_set_option_value("winbar", "Describe: " .. change_id, { win = win })
   vim.fn.feedkeys("i", "m")
 end
 
