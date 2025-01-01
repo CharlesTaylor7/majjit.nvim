@@ -21,6 +21,9 @@ function M.status()
   vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = buf })
   vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
 
+  -- jump to buffer
+  vim.api.nvim_win_set_buf(0, buf)
+
   vim.keymap.set("n", "<localleader>m", M.describe, { buffer = buf, desc = "describe" })
   vim.keymap.set("n", "<localleader>a", M.abandon, { buffer = buf, desc = "abandon" })
   vim.keymap.set("n", "<localleader>s", M.squash, { buffer = buf, desc = "squash" })
@@ -30,7 +33,7 @@ function M.status()
   -- vim.keymap.set("n", "<localleader>p", M.git_push, { buffer = buf, desc = "git push" })
   -- vim.keymap.set("n", "<localleader>ab", M.advance_bookmark, { buffer = buf, desc = "advance bookmark" })
 
-  local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'), diff.summary())"
+  local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n')"
 
   local cmd = { "jj", "log", "--no-pager", "--no-graph", "-T", template }
   local log = M.Utils.shell(cmd, function(stdout)
@@ -40,27 +43,19 @@ function M.status()
     M.Baleia.buf_set_lines(buf, 0, -1, true, lines)
     vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
 
-    -- jump to buffer
-    vim.api.nvim_win_set_buf(0, buf)
-    M.diff_view_mode()
-  end)
-end
+    for line in vim.iter(vim.api.nvim_buf_get_lines(buf, 0, -1, true)) do
+      local change_id = vim.split(line, " ")[1]
+      M.Utils.shell({ "jj", "show", "--no-pager", change_id, "-T", "''" }, function(stdout)
+        local buflines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
+        local start = M.Utils.index_of(buflines, line)
 
----show diffs under changes
----uses the configured diff tool
----for presentation purposes not for command purposes
-function M.diff_view_mode()
-  local change_id = M.Utils.cursor_word()
-  local buf = vim.api.nvim_get_current_buf()
-  local win = vim.api.nvim_get_current_win()
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  -- M.Utils.shell({ "jj", "log", "--no-graph", "--no-pager", "-T", "change_id.short(8)" })
-  M.Utils.shell({ "jj", "show", "--no-pager", change_id, "-T", "''" }, function(stdout)
-    local lines = vim.split(stdout, "\n")
-    vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
-    M.Baleia.buf_set_lines(buf, cursor[1], cursor[1], true, lines)
-    vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
-    M.Utils.fold({ win = win, start = cursor[1] + 1, count = vim.tbl_count(lines) })
+        local diff = vim.split(stdout, "\n")
+        vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
+        M.Baleia.buf_set_lines(buf, start, start, true, diff)
+        vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+        M.Utils.fold({ win = 0, start = start + 1, count = vim.tbl_count(diff) })
+      end)
+    end
   end)
 end
 

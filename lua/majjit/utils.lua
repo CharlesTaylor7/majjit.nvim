@@ -39,6 +39,17 @@ function M.fold(args)
   vim.cmd(args.start .. "," .. final .. " fold")
 end
 
+---@generic T
+---@param table T[]
+---@param value T
+---@return integer|nil
+function M.index_of(table, value)
+  for i, v in ipairs(table) do
+    if v == value then
+      return i
+    end
+  end
+end
 -- vim.keymap.set("n", "<localleader>cw", M.cursor_word, { desc = "cursor word" })
 
 return M
