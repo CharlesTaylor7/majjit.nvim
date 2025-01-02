@@ -86,7 +86,7 @@ function M.status()
           local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i - 1, 0, {
             right_gravity = true,
             strict = true,
-            virt_text = { { "(empty)", "CommitMark" } },
+            virt_text = { { "(empty) ", "CommitMark" } },
             virt_text_pos = "inline",
           })
         end
@@ -95,7 +95,7 @@ function M.status()
           local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i - 1, 0, {
             right_gravity = true,
             strict = true,
-            virt_text = { { "(no description)", "CommitMark" } },
+            virt_text = { { "(no description) ", "CommitMark" } },
             virt_text_pos = "inline",
           })
         end
