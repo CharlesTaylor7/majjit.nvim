@@ -69,9 +69,9 @@ function M.status()
         local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i - 1, 0, {
           strict = true,
           sign_text = "c",
-          --end_col = 8,
+          end_col = 8,
+          end_row = i - 1,
           hl_group = "ChangeId",
-          line_hl_group = "ChangeId",
 
           virt_text = { { "@" .. " " } },
           virt_text_pos = "inline",
@@ -80,7 +80,7 @@ function M.status()
         M.state.changes[mark_id] = change
       end
     end
-    vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { bold = true, bg = "purple" })
+    vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { bold = true, fg = "grey" })
   end)
 end
 
