@@ -1,3 +1,17 @@
+--- a magit inspired plugin for working with jujutsu via status buffer
+-- type defs
+---@generic T
+---@class (exact) Node<T>: { next: Node<T>?, prev: Node<T>? }
+
+--- stat mode is historgram from --stat
+--- view mode is the configured diff tool's view
+--- select mode is similar to jj's inbuilt split nested checkbox hierarchy
+---@alias DiffMode "none" | "stat" | "view" | "select"
+---@alias ChangeId string
+---@alias StatusFold { change: ChangeId, start: integer, count: integer }
+---@alias ExtmarkId integer
+---@alias State { changes: table }
+
 local M = {}
 
 vim.g.majjit_ns = vim.api.nvim_create_namespace("majjit")
@@ -11,17 +25,6 @@ function M.setup()
   vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { bold = true, fg = "grey" })
   vim.api.nvim_set_hl(vim.g.majjit_ns, "CommitMark", { bold = true, fg = "orange" })
 end
-
---- stat mode is historgram from --stat
---- view mode is the configured diff tool's view
---- select mode is similar to jj's inbuilt split nested checkbox hierarchy
----@alias DiffMode "none" | "stat" | "view" | "select"
----@alias ChangeId string
----@alias StatusFold { change: ChangeId, start: integer, count: integer }
---- ---@alias Folds  table<ChangeId, StatusFold>
----@alias ExtmarkId integer
----@alias State { changes: table }
-
 --- https://github.com/jj-vcs/jj/blob/main/docs/templates.md
 --- opens status buffer
 function M.status()
