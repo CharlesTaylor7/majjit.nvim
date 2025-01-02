@@ -73,7 +73,7 @@ function M.status()
           end_row = i - 1,
           hl_group = "ChangeId",
 
-          virt_text = { { "@" .. " " } },
+          virt_text = { { "@ ", "CommitMark" } },
           virt_text_pos = "inline",
         })
         M.state.changes[change] = mark_id
@@ -81,6 +81,7 @@ function M.status()
       end
     end
     vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { bold = true, fg = "grey" })
+    vim.api.nvim_set_hl(vim.g.majjit_ns, "CommitMark", { bold = true, fg = "pink" })
   end)
 end
 
