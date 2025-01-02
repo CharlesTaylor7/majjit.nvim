@@ -14,8 +14,8 @@
 
 local M = {}
 
-vim.g.majjit_hl_ns = vim.api.nvim_create_namespace("majjit")
-vim.g.majjit_change_ns = vim.api.nvim_create_namespace("majjit")
+vim.g.majjit_hl_ns = vim.api.nvim_create_namespace("majjit:hl")
+vim.g.majjit_change_ns = vim.api.nvim_create_namespace("majjit:change")
 local Folds = require("majjit.folds")
 local Utils = require("majjit.utils")
 
@@ -139,7 +139,7 @@ function M.get_prev_change()
     {}
   )
   local n = vim.tbl_count(marks)
-  return vim.print(marks[n])
+  return marks[n]
 end
 
 ---@return  [integer, integer, integer]
