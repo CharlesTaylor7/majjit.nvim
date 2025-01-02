@@ -79,4 +79,17 @@ function M.popup(buf)
   return win
 end
 
+---@param args { buf: integer, start_row: integer, end_row: integer, content: string | string[], baleia: boolean }
+function M.buf_set_lines(args)
+  local lines = type(args.content) == "string" and vim.split(args.content, "\n") or args.content
+
+  vim.api.nvim_set_option_value("modifiable", true, { buf = args.buf })
+  if args.baleia then
+    vim.g.baleia.buf_set_lines(args.buf, args.start_row, args.end_row, true, lines)
+  else
+    vim.api.nvim_buf_set_lines(args.buf, args.start_row, args.end_row, true, lines)
+  end
+  vim.api.nvim_set_option_value("modifiable", true, { buf = args.buf })
+end
+
 return M

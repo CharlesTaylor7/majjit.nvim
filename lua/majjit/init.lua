@@ -4,11 +4,8 @@ vim.g.majjit_ns = vim.api.nvim_create_namespace("majjit")
 local Folds = require("majjit.folds")
 local Utils = require("majjit.utils")
 
----@type Baleia
-local Baleia = nil
-
 function M.setup()
-  Baleia = require("baleia").setup({ async = false })
+  vim.g.baleia = require("baleia").setup({ async = false })
   vim.keymap.set("n", "<leader>jj", M.status, {})
 end
 
@@ -63,9 +60,7 @@ function M.status()
     local changes = vim.split(stdout, "\n")
 
     -- write status
-    vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
-    vim.api.nvim_buf_set_lines(buf, 0, -1, true, changes)
-    vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+    Utils.buf_set_lines({ buf = buf, start_row = 0, end_row = -1, content = changes })
 
     for i, line in ipairs(changes) do
       local change = vim.split(line, " ")[1]
@@ -92,7 +87,13 @@ local function set_change_info(start_row, info)
 
   local end_row = next_mark and next_mark[2] or -1
   vim.api.nvim_set_option_value("modifiable", true, { buf = vim.g.majjit_status_buf })
-  Baleia.buf_set_lines(vim.g.majjit_status_buf, start_row, end_row, true, vim.split(info, "\n"))
+  Utils.buf_set_lines({
+    buf = vim.g.majjit_status_buf,
+    start_row = start_row,
+    end_row = end_row,
+    baleia = true,
+    content = info,
+  })
   vim.api.nvim_set_option_value("modifiable", false, { buf = vim.g.majjit_status_buf })
 end
 
@@ -138,9 +139,24 @@ end
 --- uses word under cursor as change id
 function M.new()
   local change_id = get_cursor_change_id()
-  require("coop").spawn(function()
-    Utils.shell_async({ "jj", "new", change_id })
-    M.status()
+  Utils.shell({ "jj", "new", change_id }, function()
+    Utils.shell({ "jj", "log", "-r", "@", "--no-graph", "--color=never", "-T", "change_id.short(8)" }, function(change)
+      Utils.buf_set_lines({
+        buf = vim.g.majjit_status_buf,
+        start_row = 0,
+        end_row = 0,
+        content = { change .. " (no description)" },
+      })
+      local mark_id = vim.api.nvim_buf_set_extmark(vim.g.majjit_status_buf, vim.g.majjit_ns, 0, 0, {
+        strict = true,
+        sign_text = "c",
+        --end_col = 8,
+        hl_group = "ChangeId",
+        line_hl_group = "ChangeId",
+      })
+      M.state.changes[change] = mark_id
+      M.state.changes[mark_id] = change
+    end)
   end)
 end
 
