@@ -23,7 +23,8 @@ function M.setup()
   vim.keymap.set("n", "<leader>jj", M.status, {})
   vim.api.nvim_set_hl_ns(vim.g.majjit_ns)
   vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { bold = true, fg = "grey" })
-  vim.api.nvim_set_hl(vim.g.majjit_ns, "CommitMark", { bold = true, fg = "orange" })
+  vim.api.nvim_set_hl(vim.g.majjit_ns, "CommitSymbol", { bold = true, fg = "orange" })
+  vim.api.nvim_set_hl(vim.g.majjit_ns, "CommitMark", { bold = true, fg = "green" })
 end
 --- https://github.com/jj-vcs/jj/blob/main/docs/templates.md
 --- opens status buffer
@@ -34,7 +35,7 @@ function M.status()
   }
 
   if vim.g.majjit_status_buf then
-    vim.api.nvim_buf_delete(vim.g.majjit_status_buf, { force = true })
+    pcall(vim.api.nvim_buf_delete, vim.g.majjit_status_buf, { force = true })
   end
 
   local buf = vim.api.nvim_create_buf(false, false)
@@ -52,32 +53,53 @@ function M.status()
   vim.keymap.set("n", "<localleader>dv", M.diff_view, { buffer = buf, desc = "toggle diff mode" })
   vim.keymap.set("n", "<localleader>de", M.diff_editor, { buffer = buf, desc = "toggle diff mode" })
 
-  local template = "concat(change_id.short(8), ' ', coalesce(description.first_line(), '(no description)'), '\n')"
-  Utils.shell({ "jj", "log", "--color", "never", "--no-pager", "-T", template }, function(stdout)
+  local template = "concat(change_id.short(8), ' ', empty, ' ', description.first_line(), '\n')"
+  Utils.shell({ "jj", "log", "--color=never", "--no-pager", "-T", template }, function(stdout)
     for i, line in ipairs(vim.split(stdout, "\n")) do
       local row = vim.split(line, " ")
-      local marker = row[1]
+      local symbol = row[1]
       local change = row[3]
-      local description = table.concat(row, " ", 4)
+      local empty = row[4] == "true"
+      local description = table.concat(row, " ", 5)
       if change ~= nil and change ~= "" then
         -- write real line
         local start_row = -1
         if i == 1 then
           start_row = 0
         end
+
         Utils.buf_set_lines({
           buf = buf,
           start_row = start_row,
           end_row = -1,
           content = { description },
         })
-        -- write virtual text
+
         local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i - 1, 0, {
           right_gravity = false,
           strict = true,
-          virt_text = { { marker, "CommitMark" }, { " " }, { change, "ChangeId" }, { " " } },
+          virt_text = { { symbol, "CommitSymbol" }, { " " }, { change, "ChangeId" }, { " " } },
           virt_text_pos = "inline",
         })
+
+        if empty then
+          local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i - 1, 0, {
+            right_gravity = true,
+            strict = true,
+            virt_text = { { "(empty)", "CommitMark" } },
+            virt_text_pos = "inline",
+          })
+        end
+
+        if description == "" then
+          local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i - 1, 0, {
+            right_gravity = true,
+            strict = true,
+            virt_text = { { "(no description)", "CommitMark" } },
+            virt_text_pos = "inline",
+          })
+        end
+
         M.state.changes[change] = mark_id
         M.state.changes[mark_id] = change
       end
@@ -244,7 +266,6 @@ end
 
 -- begin: testing
 local function reload()
-  vim.api.nvim_buf_clear_namespace(vim.g.majjit_status_buf or 0, vim.g.majjit_ns, 0, -1)
   package.loaded["majjit.utils"] = nil
   package.loaded["majjit.folds"] = nil
   package.loaded["majjit.health"] = nil
