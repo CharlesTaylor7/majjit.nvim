@@ -163,30 +163,36 @@ end
 function M.absorb()
   local change_id = get_cursor_change_id()
 
-  require("coop").spawn(function()
-    Utils.shell_async({ "jj", "absorb", "--from", change_id })
-    M.status()
-  end)
+  require("coop")
+    .spawn(function()
+      Utils.shell_async({ "jj", "absorb", "--from", change_id })
+      M.status()
+    end)
+    :await()
 end
 
 --- uses word under cursor as change id
 function M.squash()
   local change_id = get_cursor_change_id()
 
-  require("coop").spawn(function()
-    Utils.shell_async({ "jj", "squash", "--revision", change_id })
-    M.status()
-  end)
+  require("coop")
+    .spawn(function()
+      Utils.shell_async({ "jj", "squash", "--revision", change_id })
+      M.status()
+    end)
+    :await()
 end
 
 --- uses word under cursor as change id
 function M.abandon()
   local change_id = get_cursor_change_id()
 
-  require("coop").spawn(function()
-    Utils.shell_async({ "jj", "abandon", change_id })
-    M.status()
-  end)
+  require("coop")
+    .spawn(function()
+      Utils.shell_async({ "jj", "abandon", change_id })
+      M.status()
+    end)
+    :await()
 end
 --- uses word under cursor as change id
 function M.describe()
