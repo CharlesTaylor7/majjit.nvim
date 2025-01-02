@@ -37,7 +37,6 @@ function M.status()
     vim.api.nvim_buf_set_name(buf, "majjit://status")
     vim.api.nvim_set_option_value("filetype", "majjit", { buf = buf })
     vim.api.nvim_set_option_value("buftype", "nowrite", { buf = buf })
-    vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
     vim.g.majjit_status_buf = buf
   end
 
@@ -80,7 +79,9 @@ function M.status()
         })
         -- write virtual text
         local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i - 1, 0, {
+          right_gravity = false,
           strict = true,
+          -- end_col = 10,
           virt_text = { { marker, "CommitMark" }, { " " }, { change, "ChangeId" }, { " " } },
           virt_text_pos = "inline",
         })
