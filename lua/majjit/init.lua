@@ -58,7 +58,7 @@ function M.status()
   vim.keymap.set("n", "<c-v>", M.diff_view, { buffer = buf, desc = "toggle diff mode" })
   vim.keymap.set("n", "<c-e>", M.diff_select, { buffer = buf, desc = "toggle diff mode" })
 
-  local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'))"
+  local template = "concat(change_id.short(8), ' ', coalesce(description.first_line(), '(no description)'), '\n')"
   Utils.shell({ "jj", "log", "--color", "never", "--no-pager", "--no-graph", "-T", template }, function(stdout)
     local changes = vim.split(stdout, "\n")
 
