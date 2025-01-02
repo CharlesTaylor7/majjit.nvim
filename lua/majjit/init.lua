@@ -4,10 +4,10 @@ vim.g.majjit_ns = vim.api.nvim_create_namespace("majjit")
 local Folds = require("majjit.folds")
 local Utils = require("majjit.utils")
 
-local Baleia = require("baleia")
+local Baleia = nil
 
 function M.setup()
-  Baleia.setup({ async = false })
+  Baleia = require("baleia").setup({ async = false })
   vim.keymap.set("n", "<leader>jj", M.status, {})
 end
 
@@ -69,13 +69,13 @@ function M.status()
     for i, line in ipairs(changes) do
       local change = vim.split(line, " ")[1]
       if change ~= "" then
-        local mark_id = vim.api.nvim_buf_set_extmark(
-          buf,
-          vim.g.majjit_ns,
-          i,
-          0,
-          { hl_group = "ChangeId", line_hl_group = "ChangeId" }
-        )
+        local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i - 1, 0, {
+          strict = true,
+          sign_text = "c",
+          --end_col = 8,
+          hl_group = "ChangeId",
+          line_hl_group = "ChangeId",
+        })
         M.state.changes[change] = mark_id
         M.state.changes[mark_id] = change
       end
@@ -104,15 +104,13 @@ local function get_cursor_change_id()
     {}
   )
 
-  vim.print(marks)
   return M.state.changes[marks[1][1]]
 end
 
 function M.diff_stat()
   local change_id = get_cursor_change_id()
   local cursor = vim.api.nvim_win_get_cursor(0)
-  require("coop").spawn(function()
-    local stat = Utils.shell_async({ "jj", "show", change_id, "--stat", "-T", "" })
+  Utils.shell({ "jj", "show", change_id, "--stat", "-T", "" }, function(stat)
     set_change_info(cursor[1], stat)
   end)
 end
@@ -120,8 +118,7 @@ end
 function M.diff_view()
   local change_id = get_cursor_change_id()
   local cursor = vim.api.nvim_win_get_cursor(0)
-  require("coop").spawn(function()
-    local diff = Utils.shell_async({ "jj", "show", change_id, "-T", "" })
+  Utils.shell({ "jj", "show", change_id, "-T", "" }, function(diff)
     set_change_info(cursor[1], diff)
   end)
 end
@@ -130,8 +127,8 @@ end
 function M.diff_select()
   local change_id = get_cursor_change_id()
   local cursor = vim.api.nvim_win_get_cursor(0)
-  require("coop").spawn(function()
-    local diff = Utils.shell_async({ "jj", "show", change_id, "--git", "-T", "" })
+
+  Utils.shell({ "jj", "show", change_id, "--git", "-T", "" }, function(diff)
     set_change_info(cursor[1], diff)
   end)
 end
@@ -200,8 +197,8 @@ function M.describe()
   -- jump to buffer
   -- vim.api.nvim_win_set_buf(0, buf)
   local win = Utils.popup(buf)
+  -- TODO: prepopulate with pre-existing commit message
   vim.api.nvim_set_option_value("winbar", "Describe: " .. change_id, { win = win })
-  vim.fn.feedkeys("i", "m")
 end
 
 -- begin: testing
