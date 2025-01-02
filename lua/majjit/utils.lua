@@ -39,6 +39,7 @@ function M.shell(cmd, on_exit)
     end)
   end)
 end
+---@async
 M.shell_async = M.coop_wrap(M.shell)
 M.sleep = require("coop.uv-utils").sleep
 
@@ -81,7 +82,13 @@ end
 
 ---@param args { buf: integer, start_row: integer, end_row: integer, content: string | string[], baleia: boolean }
 function M.buf_set_lines(args)
-  local lines = type(args.content) == "string" and vim.split(args.content, "\n") or args.content
+  local content = args.content
+  local lines
+  if type(content) == "string" then
+    lines = vim.split(content, "\n")
+  else
+    lines = content
+  end
 
   local modifiable = vim.api.nvim_get_option_value("modifiable", { buf = args.buf })
 
