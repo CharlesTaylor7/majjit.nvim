@@ -135,31 +135,37 @@ function M.get_prev_change()
     vim.g.majjit_status_buf,
     vim.g.majjit_change_ns,
     0,
-    { cursor[1] - 1, 0 },
+    { cursor[1] - 2, -1 },
     {}
   )
   local n = vim.tbl_count(marks)
+  vim.print(cursor, marks[n])
   return marks[n]
 end
 
 ---@return  [integer, integer, integer]
 function M.get_next_change()
   local cursor = vim.api.nvim_win_get_cursor(0)
-  local marks = vim.api.nvim_buf_get_extmarks(vim.g.majjit_status_buf, vim.g.majjit_change_ns, { cursor[1], 1 }, -1, {})
-  vim.print(marks)
-  return marks[1]
+  local marks = vim.api.nvim_buf_get_extmarks(
+    vim.g.majjit_status_buf,
+    vim.g.majjit_change_ns,
+    { cursor[1] - 1, 1 },
+    -1,
+    {}
+  )
+  vim.print(cursor)
+  -- vim.print(vim.api.nvim_buf_get_extmarks(vim.g.majjit_status_buf, vim.g.majjit_change_ns, 0, -1, {}))
+  return vim.print(marks[1])
 end
 
 function M.navigate_prev_change()
   local mark = M.get_prev_change()
-  table.remove(mark, 1)
-  vim.api.nvim_win_set_cursor(0, mark)
+  vim.api.nvim_win_set_cursor(0, { mark[2] + 1, mark[3] })
 end
 
 function M.navigate_next_change()
   local mark = M.get_next_change()
-  table.remove(mark, 1)
-  vim.api.nvim_win_set_cursor(0, mark)
+  vim.api.nvim_win_set_cursor(0, { mark[2] + 1, mark[3] })
 end
 
 ---@param start_row integer
