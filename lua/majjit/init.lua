@@ -14,17 +14,18 @@
 
 local M = {}
 
-vim.g.majjit_ns = vim.api.nvim_create_namespace("majjit")
+vim.g.majjit_hl_ns = vim.api.nvim_create_namespace("majjit")
+vim.g.majjit_change_ns = vim.api.nvim_create_namespace("majjit")
 local Folds = require("majjit.folds")
 local Utils = require("majjit.utils")
 
 function M.setup()
   vim.g.baleia = require("baleia").setup({ async = false })
   vim.keymap.set("n", "<leader>jj", M.status, {})
-  vim.api.nvim_set_hl_ns(vim.g.majjit_ns)
-  vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { bold = true, fg = "grey" })
-  vim.api.nvim_set_hl(vim.g.majjit_ns, "CommitSymbol", { bold = true, fg = "orange" })
-  vim.api.nvim_set_hl(vim.g.majjit_ns, "CommitMark", { bold = true, fg = "green" })
+  vim.api.nvim_set_hl_ns(vim.g.majjit_hl_ns)
+  vim.api.nvim_set_hl(vim.g.majjit_hl_ns, "ChangeId", { bold = true, fg = "grey" })
+  vim.api.nvim_set_hl(vim.g.majjit_hl_ns, "CommitSymbol", { bold = true, fg = "orange" })
+  vim.api.nvim_set_hl(vim.g.majjit_hl_ns, "CommitMark", { bold = true, fg = "green" })
 end
 --- https://github.com/jj-vcs/jj/blob/main/docs/templates.md
 --- opens status buffer
@@ -75,7 +76,15 @@ function M.status()
           content = { description },
         })
 
-        local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i - 1, 0, {
+        local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_change_ns, i - 1, 0, {
+          right_gravity = false,
+          strict = true,
+        })
+        M.state.changes[change] = mark_id
+        M.state.changes[mark_id] = change
+
+        -- begin: highlight extmarks
+        vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_hl_ns, i - 1, 0, {
           right_gravity = false,
           strict = true,
           virt_text = { { symbol, "CommitSymbol" }, { " " }, { change, "ChangeId" }, { " " } },
@@ -83,7 +92,7 @@ function M.status()
         })
 
         if empty then
-          local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i - 1, 0, {
+          vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_hl_ns, i - 1, 0, {
             right_gravity = true,
             strict = true,
             virt_text = { { "(empty) ", "CommitMark" } },
@@ -92,7 +101,7 @@ function M.status()
         end
 
         if description == "" then
-          local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i - 1, 0, {
+          vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_hl_ns, i - 1, 0, {
             right_gravity = true,
             strict = true,
             virt_text = { { "(no description) ", "CommitMark" } },
@@ -100,8 +109,7 @@ function M.status()
           })
         end
 
-        M.state.changes[change] = mark_id
-        M.state.changes[mark_id] = change
+        -- end: highlight extmarks
       end
     end
 
@@ -115,7 +123,8 @@ end
 ---@param start_row integer
 ---@param info string
 local function set_change_info(start_row, info)
-  local next_mark = vim.api.nvim_buf_get_extmarks(vim.g.majjit_status_buf, vim.g.majjit_ns, { start_row, 0 }, -1, {})[1]
+  local next_mark =
+    vim.api.nvim_buf_get_extmarks(vim.g.majjit_status_buf, vim.g.majjit_hl_ns, { start_row, 0 }, -1, {})[1]
 
   local end_row = next_mark and next_mark[2] or -1
   Utils.buf_set_lines({
@@ -131,7 +140,7 @@ local function get_cursor_change_id()
   local cursor = vim.api.nvim_win_get_cursor(0)
   local marks = vim.api.nvim_buf_get_extmarks(
     vim.g.majjit_status_buf,
-    vim.g.majjit_ns,
+    vim.g.majjit_change_ns,
     { cursor[1] - 1, 0 },
     { cursor[1] - 1, -1 },
     {}
@@ -178,7 +187,7 @@ function M.new()
         end_row = 0,
         content = { change .. " (no description)" },
       })
-      local mark_id = vim.api.nvim_buf_set_extmark(vim.g.majjit_status_buf, vim.g.majjit_ns, 0, 0, {
+      local mark_id = vim.api.nvim_buf_set_extmark(vim.g.majjit_status_buf, vim.g.majjit_hl_ns, 0, 0, {
         strict = true,
         -- sign_text = "c",
         --end_col = 8,
