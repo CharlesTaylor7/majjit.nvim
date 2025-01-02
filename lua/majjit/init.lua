@@ -1,11 +1,13 @@
 local M = {}
 
 vim.g.majjit_ns = vim.api.nvim_create_namespace("majjit")
-M.Folds = require("majjit.folds")
-M.Utils = require("majjit.utils")
+local Folds = require("majjit.folds")
+local Utils = require("majjit.utils")
+
+local Baleia = require("baleia")
 
 function M.setup()
-  M.Baleia = require("baleia").setup({ async = false })
+  Baleia.setup({ async = false })
   vim.keymap.set("n", "<leader>jj", M.status, {})
 end
 
@@ -44,7 +46,7 @@ function M.status()
 
   -- delete folds
   vim.api.nvim_set_option_value("foldmethod", "manual", { win = win })
-  M.Folds.delete_all()
+  Folds.delete_all()
 
   vim.keymap.set("n", "<localleader>m", M.describe, { buffer = buf, desc = "describe" })
   vim.keymap.set("n", "<localleader>a", M.abandon, { buffer = buf, desc = "abandon" })
@@ -57,7 +59,7 @@ function M.status()
 
   require("coop").spawn(function()
     local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'))"
-    local stdout = M.Utils.shell({ "jj", "log", "--color", "never", "--no-pager", "--no-graph", "-T", template })
+    local stdout = Utils.shell({ "jj", "log", "--color", "never", "--no-pager", "--no-graph", "-T", template })
     local changes = vim.split(stdout, "\n")
 
     -- write status
@@ -90,7 +92,7 @@ local function set_change_info(line, info)
   local marks = vim.api.nvim_buf_get_extmarks(vim.g.majjit_status_buf, vim.g.majjit_ns, { line, 0 }, -1, {})
 
   vim.api.nvim_set_option_value("modifiable", true, { buf = vim.g.majjit_status_buf })
-  M.Baleia.buf_set_lines(vim.g.majjit_status_buf, line, marks[1][2], true, vim.split(info, "\n"))
+  Baleia.buf_set_lines(vim.g.majjit_status_buf, line, marks[1][2], true, vim.split(info, "\n"))
   vim.api.nvim_set_option_value("modifiable", false, { buf = vim.g.majjit_status_buf })
 end
 
@@ -112,7 +114,7 @@ function M.diff_stat()
   local change_id = get_cursor_change_id()
   local cursor = vim.api.nvim_win_get_cursor(0)
   require("coop").spawn(function()
-    local stat = M.Utils.shell({ "jj", "show", change_id, "--stat", "-T", "" })
+    local stat = Utils.shell({ "jj", "show", change_id, "--stat", "-T", "" })
     set_change_info(cursor[1], stat)
   end)
 end
@@ -121,7 +123,7 @@ function M.diff_view()
   local change_id = get_cursor_change_id()
   local cursor = vim.api.nvim_win_get_cursor(0)
   require("coop").spawn(function()
-    local diff = M.Utils.shell({ "jj", "show", change_id, "-T", "" })
+    local diff = Utils.shell({ "jj", "show", change_id, "-T", "" })
     set_change_info(cursor[1], diff)
   end)
 end
@@ -131,7 +133,7 @@ function M.diff_select()
   local change_id = get_cursor_change_id()
   local cursor = vim.api.nvim_win_get_cursor(0)
   require("coop").spawn(function()
-    local diff = M.Utils.shell({ "jj", "show", change_id, "--git", "-T", "" })
+    local diff = Utils.shell({ "jj", "show", change_id, "--git", "-T", "" })
     set_change_info(cursor[1], diff)
   end)
 end
@@ -140,7 +142,7 @@ end
 function M.new()
   local change_id = get_cursor_change_id()
   require("coop").spawn(function()
-    M.Utils.shell({ "jj", "new", change_id })
+    Utils.shell({ "jj", "new", change_id })
     M.status()
   end)
 end
@@ -150,7 +152,7 @@ function M.absorb()
   local change_id = get_cursor_change_id()
 
   require("coop").spawn(function()
-    M.Utils.shell({ "jj", "absorb", "--from", change_id })
+    Utils.shell({ "jj", "absorb", "--from", change_id })
     M.status()
   end)
 end
@@ -160,7 +162,7 @@ function M.squash()
   local change_id = get_cursor_change_id()
 
   require("coop").spawn(function()
-    M.Utils.shell({ "jj", "squash", "--revision", change_id })
+    Utils.shell({ "jj", "squash", "--revision", change_id })
     M.status()
   end)
 end
@@ -170,7 +172,7 @@ function M.abandon()
   local change_id = get_cursor_change_id()
 
   require("coop").spawn(function()
-    M.Utils.shell({ "jj", "abandon", change_id })
+    Utils.shell({ "jj", "abandon", change_id })
     M.status()
   end)
 end
@@ -188,7 +190,7 @@ function M.describe()
     callback = function(args)
       require("coop").spawn(function()
         local message = table.concat(vim.api.nvim_buf_get_lines(args.buf, 0, -1, true), "\n")
-        local stdout = M.Utils.shell({ "jj", "describe", "-r", change_id, "-m", message })
+        local stdout = Utils.shell({ "jj", "describe", "-r", change_id, "-m", message })
         -- expected for the "BufWriteCmd" event
         vim.api.nvim_set_option_value("modified", false, { buf = args.buf })
         -- return to status buffer
@@ -199,7 +201,7 @@ function M.describe()
 
   -- jump to buffer
   -- vim.api.nvim_win_set_buf(0, buf)
-  local win = M.Utils.popup(buf)
+  local win = Utils.popup(buf)
   vim.api.nvim_set_option_value("winbar", "Describe: " .. change_id, { win = win })
   vim.fn.feedkeys("i", "m")
 end
