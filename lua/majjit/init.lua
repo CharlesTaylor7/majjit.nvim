@@ -51,9 +51,9 @@ function M.status()
   vim.keymap.set("n", "<localleader>s", M.squash, { buffer = buf, desc = "squash" })
   vim.keymap.set("n", "<localleader>w", M.absorb, { buffer = buf, desc = "absorb" })
   vim.keymap.set("n", "<localleader>n", M.new, { buffer = buf, desc = "new change" })
-  vim.keymap.set("n", "<c-s>", M.diff_stat, { buffer = buf, desc = "toggle diff mode" })
-  vim.keymap.set("n", "<c-v>", M.diff_view, { buffer = buf, desc = "toggle diff mode" })
-  vim.keymap.set("n", "<c-e>", M.diff_select, { buffer = buf, desc = "toggle diff mode" })
+  vim.keymap.set("n", "<localleader>ds", M.diff_stat, { buffer = buf, desc = "toggle diff mode" })
+  vim.keymap.set("n", "<localleader>dv", M.diff_view, { buffer = buf, desc = "toggle diff mode" })
+  vim.keymap.set("n", "<localleader>de", M.diff_editor, { buffer = buf, desc = "toggle diff mode" })
 
   local template = "concat(change_id.short(8), ' ', coalesce(description.first_line(), '(no description)'), '\n')"
   Utils.shell({ "jj", "log", "--color", "never", "--no-pager", "--no-graph", "-T", template }, function(stdout)
@@ -86,7 +86,6 @@ local function set_change_info(start_row, info)
   local next_mark = vim.api.nvim_buf_get_extmarks(vim.g.majjit_status_buf, vim.g.majjit_ns, { start_row, 0 }, -1, {})[1]
 
   local end_row = next_mark and next_mark[2] or -1
-  vim.api.nvim_set_option_value("modifiable", true, { buf = vim.g.majjit_status_buf })
   Utils.buf_set_lines({
     buf = vim.g.majjit_status_buf,
     start_row = start_row,
@@ -94,7 +93,6 @@ local function set_change_info(start_row, info)
     baleia = true,
     content = info,
   })
-  vim.api.nvim_set_option_value("modifiable", false, { buf = vim.g.majjit_status_buf })
 end
 
 local function get_cursor_change_id()
@@ -127,7 +125,7 @@ function M.diff_view()
 end
 
 --todo: research what jj split does for this
-function M.diff_select()
+function M.diff_editor()
   local change_id = get_cursor_change_id()
   local cursor = vim.api.nvim_win_get_cursor(0)
 

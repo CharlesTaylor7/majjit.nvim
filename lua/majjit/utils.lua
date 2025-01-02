@@ -83,13 +83,15 @@ end
 function M.buf_set_lines(args)
   local lines = type(args.content) == "string" and vim.split(args.content, "\n") or args.content
 
+  local modifiable = vim.api.nvim_get_option_value("modifiable", { buf = args.buf })
+
   vim.api.nvim_set_option_value("modifiable", true, { buf = args.buf })
   if args.baleia then
     vim.g.baleia.buf_set_lines(args.buf, args.start_row, args.end_row, true, lines)
   else
     vim.api.nvim_buf_set_lines(args.buf, args.start_row, args.end_row, true, lines)
   end
-  vim.api.nvim_set_option_value("modifiable", true, { buf = args.buf })
+  vim.api.nvim_set_option_value("modifiable", modifiable, { buf = args.buf })
 end
 
 return M
