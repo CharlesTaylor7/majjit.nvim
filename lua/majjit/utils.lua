@@ -98,6 +98,7 @@ function M.buf_set_lines(args)
   else
     vim.api.nvim_buf_set_lines(args.buf, args.start_row, args.end_row, true, lines)
   end
+  vim.api.nvim_set_option_value("modified", false, { buf = args.buf })
   vim.api.nvim_set_option_value("modifiable", modifiable, { buf = args.buf })
 end
 

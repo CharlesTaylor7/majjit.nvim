@@ -20,34 +20,26 @@ end
 ---@alias StatusFold { change: ChangeId, start: integer, count: integer }
 --- ---@alias Folds  table<ChangeId, StatusFold>
 ---@alias ExtmarkId integer
----@alias State {  diff_mode_index: integer, changes: table}
+---@alias State { changes: table }
 
 --- https://github.com/jj-vcs/jj/blob/main/docs/templates.md
 --- opens status buffer
 function M.status()
   ---@type State
   M.state = {
-    diff_mode_index = 0,
     changes = {},
   }
 
-  local buf = vim.g.majjit_status_buf
-  if not buf then
-    buf = vim.api.nvim_create_buf(false, false)
-    vim.api.nvim_buf_set_name(buf, "majjit://status")
-    vim.api.nvim_set_option_value("filetype", "majjit", { buf = buf })
-    vim.api.nvim_set_option_value("buftype", "nowrite", { buf = buf })
-    vim.g.majjit_status_buf = buf
+  if vim.g.majjit_status_buf then
+    vim.api.nvim_buf_delete(vim.g.majjit_status_buf, { force = true })
   end
 
-  -- jump to buffer
-  local win = 0
-  vim.api.nvim_win_set_buf(win, buf)
-
-  -- delete folds
-  vim.api.nvim_set_option_value("foldmethod", "manual", { win = win })
-  Folds.delete_all()
-
+  local buf = vim.api.nvim_create_buf(false, false)
+  vim.g.majjit_status_buf = buf
+  vim.api.nvim_buf_set_name(buf, "majjit://status")
+  vim.api.nvim_set_option_value("filetype", "majjit", { buf = buf })
+  vim.api.nvim_set_option_value("buftype", "acwrite", { buf = buf })
+  vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = buf })
   vim.keymap.set("n", "<localleader>m", M.describe, { buffer = buf, desc = "describe" })
   vim.keymap.set("n", "<localleader>a", M.abandon, { buffer = buf, desc = "abandon" })
   vim.keymap.set("n", "<localleader>s", M.squash, { buffer = buf, desc = "squash" })
@@ -64,7 +56,6 @@ function M.status()
       local marker = row[1]
       local change = row[3]
       local description = table.concat(row, " ", 4)
-      vim.print({ marker = marker, change = change, description = description })
       if change ~= nil and change ~= "" then
         -- write real line
         local start_row = -1
@@ -81,7 +72,6 @@ function M.status()
         local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i - 1, 0, {
           right_gravity = false,
           strict = true,
-          -- end_col = 10,
           virt_text = { { marker, "CommitMark" }, { " " }, { change, "ChangeId" }, { " " } },
           virt_text_pos = "inline",
         })
@@ -89,6 +79,11 @@ function M.status()
         M.state.changes[mark_id] = change
       end
     end
+
+    -- jump to buffer
+    local win = 0
+    vim.api.nvim_win_set_buf(win, buf)
+    vim.api.nvim_set_option_value("foldmethod", "manual", { win = win })
   end)
 end
 
