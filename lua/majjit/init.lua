@@ -4,10 +4,11 @@ vim.g.majjit_ns = vim.api.nvim_create_namespace("majjit")
 local Folds = require("majjit.folds")
 local Utils = require("majjit.utils")
 
-local Baleia = require("baleia")
+---@type Baleia
+local Baleia = nil
 
 function M.setup()
-  Baleia = Baleia.setup({ async = false })
+  Baleia = require("baleia").setup({ async = false })
   vim.keymap.set("n", "<leader>jj", M.status, {})
 end
 
@@ -84,13 +85,14 @@ function M.status()
   end)
 end
 
----@param line integer
+---@param start_row integer
 ---@param info string
-local function set_change_info(line, info)
-  local marks = vim.api.nvim_buf_get_extmarks(vim.g.majjit_status_buf, vim.g.majjit_ns, { line, 0 }, -1, {})
+local function set_change_info(start_row, info)
+  local next_mark = vim.api.nvim_buf_get_extmarks(vim.g.majjit_status_buf, vim.g.majjit_ns, { start_row, 0 }, -1, {})[1]
 
+  local end_row = next_mark and next_mark[2] or -1
   vim.api.nvim_set_option_value("modifiable", true, { buf = vim.g.majjit_status_buf })
-  Baleia.buf_set_lines(vim.g.majjit_status_buf, line, marks[1][2], true, vim.split(info, "\n"))
+  Baleia.buf_set_lines(vim.g.majjit_status_buf, start_row, end_row, true, vim.split(info, "\n"))
   vim.api.nvim_set_option_value("modifiable", false, { buf = vim.g.majjit_status_buf })
 end
 
@@ -99,12 +101,10 @@ local function get_cursor_change_id()
   local marks = vim.api.nvim_buf_get_extmarks(
     vim.g.majjit_status_buf,
     vim.g.majjit_ns,
-    { cursor[1], 0 },
-    { cursor[1], -1 },
+    { cursor[1] - 1, 0 },
+    { cursor[1] - 1, -1 },
     {}
   )
-  local all_marks = vim.api.nvim_buf_get_extmarks(vim.g.majjit_status_buf, vim.g.majjit_ns, 0, -1, {})
-  vim.print(vim.tbl_count(all_marks))
 
   return M.state.changes[marks[1][1]]
 end
