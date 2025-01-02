@@ -139,7 +139,7 @@ function M.get_prev_change()
     {}
   )
   local n = vim.tbl_count(marks)
-  vim.print(cursor, marks[n])
+  
   return marks[n]
 end
 
@@ -153,9 +153,9 @@ function M.get_next_change()
     -1,
     {}
   )
-  vim.print(cursor)
+  
   -- vim.print(vim.api.nvim_buf_get_extmarks(vim.g.majjit_status_buf, vim.g.majjit_change_ns, 0, -1, {}))
-  return vim.print(marks[1])
+  return marks[1]
 end
 
 function M.navigate_prev_change()

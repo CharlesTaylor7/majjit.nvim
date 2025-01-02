@@ -32,7 +32,7 @@ function M.shell(cmd, on_exit)
       if args.code ~= 0 then
         ---@diagnostic disable-next-line
         args.cmd = cmd
-        vim.print(args)
+        
       else
         on_exit(args.stdout)
       end

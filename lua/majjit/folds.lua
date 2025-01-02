@@ -3,7 +3,7 @@ local M = {}
 ---@param args { start: integer, count: integer }
 function M.create(args)
   if args.count <= 0 then
-    vim.print("can't fold backwards")
+    
     return
   end
   local final = args.start + args.count - 1
