@@ -25,7 +25,8 @@ function M.setup()
   vim.api.nvim_set_hl_ns(vim.g.majjit_hl_ns)
   vim.api.nvim_set_hl(vim.g.majjit_hl_ns, "ChangeId", { bold = true, fg = "grey" })
   vim.api.nvim_set_hl(vim.g.majjit_hl_ns, "CommitSymbol", { bold = true, fg = "orange" })
-  vim.api.nvim_set_hl(vim.g.majjit_hl_ns, "CommitMark", { bold = true, fg = "green" })
+  vim.api.nvim_set_hl(vim.g.majjit_hl_ns, "CommitMark", { fg = "green", italic = true })
+  vim.api.nvim_set_hl(vim.g.majjit_hl_ns, "CommitMarkBold", { bold = true, italic = false, link = "CommitMark" })
 end
 --- https://github.com/jj-vcs/jj/blob/main/docs/templates.md
 --- opens status buffer
@@ -61,7 +62,11 @@ function M.status()
       local symbol = row[1]
       local change = row[3]
       local empty = row[4] == "true"
+      ---@type string?
       local description = table.concat(row, " ", 5)
+      if description == "" then
+        description = nil
+      end
       if change ~= nil and change ~= "" then
         -- write real line
         local start_row = -1
@@ -73,7 +78,7 @@ function M.status()
           buf = buf,
           start_row = start_row,
           end_row = -1,
-          content = { description },
+          content = { description or " " },
         })
 
         local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_change_ns, i - 1, 0, {
@@ -92,7 +97,7 @@ function M.status()
         })
 
         if empty then
-          vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_hl_ns, i - 1, 0, {
+          vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_hl_ns, i - 1, 1, {
             right_gravity = true,
             strict = true,
             virt_text = { { "(empty) ", "CommitMark" } },
@@ -100,11 +105,11 @@ function M.status()
           })
         end
 
-        if description == "" then
-          vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_hl_ns, i - 1, 0, {
+        if not description then
+          vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_hl_ns, i - 1, 1, {
             right_gravity = true,
             strict = true,
-            virt_text = { { "(no description) ", "CommitMark" } },
+            virt_text = { { "(no description) ", empty and "CommitMarkBold" or "CommitMark" } },
             virt_text_pos = "inline",
           })
         end
