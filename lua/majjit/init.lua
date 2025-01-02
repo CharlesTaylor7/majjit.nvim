@@ -136,10 +136,11 @@ function M.diff_select()
   end)
 end
 
---- uses word under cursor as change id
+--- preserves linear history
+--- inserts new change after current line
 function M.new()
   local change_id = get_cursor_change_id()
-  Utils.shell({ "jj", "new", change_id }, function()
+  Utils.shell({ "jj", "new", "-A", change_id }, function()
     Utils.shell({ "jj", "log", "-r", "@", "--no-graph", "--color=never", "-T", "change_id.short(8)" }, function(change)
       Utils.buf_set_lines({
         buf = vim.g.majjit_status_buf,
