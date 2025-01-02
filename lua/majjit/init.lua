@@ -8,6 +8,8 @@ function M.setup()
   vim.g.baleia = require("baleia").setup({ async = false })
   vim.keymap.set("n", "<leader>jj", M.status, {})
   vim.api.nvim_set_hl_ns(vim.g.majjit_ns)
+  vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { bold = true, fg = "grey" })
+  vim.api.nvim_set_hl(vim.g.majjit_ns, "CommitMark", { bold = true, fg = "orange" })
 end
 
 --- stat mode is historgram from --stat
@@ -57,31 +59,35 @@ function M.status()
   vim.keymap.set("n", "<localleader>de", M.diff_editor, { buffer = buf, desc = "toggle diff mode" })
 
   local template = "concat(change_id.short(8), ' ', coalesce(description.first_line(), '(no description)'), '\n')"
-  Utils.shell({ "jj", "log", "--color", "never", "--no-pager", "--no-graph", "-T", template }, function(stdout)
-    local changes = vim.split(stdout, "\n")
-
-    -- write status
-    Utils.buf_set_lines({ buf = buf, start_row = 0, end_row = -1, content = changes })
-
-    for i, line in ipairs(changes) do
-      local change = vim.split(line, " ")[1]
-      if change ~= "" then
+  Utils.shell({ "jj", "log", "--color", "never", "--no-pager", "-T", template }, function(stdout)
+    for i, line in ipairs(vim.split(stdout, "\n")) do
+      local row = vim.split(line, " ")
+      local marker = row[1]
+      local change = row[3]
+      local description = table.concat(row, " ", 4)
+      vim.print({ marker = marker, change = change, description = description })
+      if change ~= nil and change ~= "" then
+        -- write real line
+        local start_row = -1
+        if i == 1 then
+          start_row = 0
+        end
+        Utils.buf_set_lines({
+          buf = buf,
+          start_row = start_row,
+          end_row = -1,
+          content = { description },
+        })
+        -- write virtual text
         local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i - 1, 0, {
           strict = true,
-          sign_text = "c",
-          end_col = 8,
-          end_row = i - 1,
-          hl_group = "ChangeId",
-
-          virt_text = { { "@ ", "CommitMark" } },
+          virt_text = { { marker, "CommitMark" }, { " " }, { change, "ChangeId" }, { " " } },
           virt_text_pos = "inline",
         })
         M.state.changes[change] = mark_id
         M.state.changes[mark_id] = change
       end
     end
-    vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { bold = true, fg = "grey" })
-    vim.api.nvim_set_hl(vim.g.majjit_ns, "CommitMark", { bold = true, fg = "pink" })
   end)
 end
 
