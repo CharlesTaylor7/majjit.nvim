@@ -57,18 +57,26 @@ function M.status()
 
   require("coop").spawn(function()
     local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'))"
-    local stdout = M.Utils.shell({ "jj", "log", "--no-color", "--no-pager", "--no-graph", "-T", template })
+    local stdout = M.Utils.shell({ "jj", "log", "--color", "never", "--no-pager", "--no-graph", "-T", template })
     local changes = vim.split(stdout, "\n")
 
     -- write status
     vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
-    vim.g.nvim_buf_set_lines(buf, 0, -1, true, changes)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, true, changes)
     vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
 
+    vim.api.nvim_set_option_value("cursorline", true, { win = 0 })
+    vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { fg = "red" })
     for i, line in ipairs(changes) do
       local change = vim.split(line, " ")[1]
       if change ~= "" then
-        local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_ns, i, 0, { hl_group = "ChangeId" })
+        local mark_id = vim.api.nvim_buf_set_extmark(
+          buf,
+          vim.g.majjit_ns,
+          i,
+          0,
+          { hl_group = "ChangeId", end_col = -1, cursorline_hl_group = "ChangeId" }
+        )
         M.state.changes[change] = mark_id
         M.state.changes[mark_id] = change
       end
@@ -88,8 +96,15 @@ end
 
 local function get_cursor_change_id()
   local cursor = vim.api.nvim_win_get_cursor(0)
-  local marks = vim.api.nvim_buf_get_extmarks(0, vim.g.majjit_ns, { cursor[1], 0 }, { cursor[1], -1 }, {})
+  local marks = vim.api.nvim_buf_get_extmarks(
+    vim.g.majjit_status_buf,
+    vim.g.majjit_ns,
+    { cursor[1], 0 },
+    { cursor[1], -1 },
+    {}
+  )
 
+  vim.print(marks)
   return M.state.changes[marks[1][1]]
 end
 
