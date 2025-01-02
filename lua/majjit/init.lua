@@ -7,6 +7,7 @@ local Utils = require("majjit.utils")
 function M.setup()
   vim.g.baleia = require("baleia").setup({ async = false })
   vim.keymap.set("n", "<leader>jj", M.status, {})
+  vim.api.nvim_set_hl_ns(vim.g.majjit_ns)
 end
 
 --- stat mode is historgram from --stat
@@ -71,12 +72,15 @@ function M.status()
           --end_col = 8,
           hl_group = "ChangeId",
           line_hl_group = "ChangeId",
+
+          virt_text = { { "@" .. " " } },
+          virt_text_pos = "inline",
         })
         M.state.changes[change] = mark_id
         M.state.changes[mark_id] = change
       end
     end
-    vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { bold = true, bg = "green" })
+    vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { bold = true, bg = "purple" })
   end)
 end
 
@@ -148,10 +152,13 @@ function M.new()
       })
       local mark_id = vim.api.nvim_buf_set_extmark(vim.g.majjit_status_buf, vim.g.majjit_ns, 0, 0, {
         strict = true,
-        sign_text = "c",
+        -- sign_text = "c",
         --end_col = 8,
         hl_group = "ChangeId",
         line_hl_group = "ChangeId",
+
+        virt_text = { { "@" .. " " } },
+        virt_text_pos = "inline",
       })
       M.state.changes[change] = mark_id
       M.state.changes[mark_id] = change
