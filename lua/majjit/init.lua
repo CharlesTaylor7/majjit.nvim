@@ -10,7 +10,7 @@
 ---@alias ChangeId string
 ---@alias StatusFold { change: ChangeId, start: integer, count: integer }
 ---@alias ExtmarkId integer
----@alias State { changes: table }
+---@alias State { marks: table, messages: table<ChangeId, string> }
 
 local M = {}
 
@@ -33,7 +33,7 @@ end
 function M.status()
   ---@type State
   M.state = {
-    changes = {},
+    marks = {},
   }
 
   if vim.g.majjit_status_buf then
@@ -81,12 +81,12 @@ function M.status()
           content = { description or " " },
         })
 
-        local mark_id = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_change_ns, i - 1, 0, {
+        local mark = vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_change_ns, i - 1, 0, {
           right_gravity = false,
           strict = true,
         })
-        M.state.changes[change] = mark_id
-        M.state.changes[mark_id] = change
+        M.state.marks[change] = mark
+        M.state.marks[mark] = change
 
         -- begin: highlight extmarks
         vim.api.nvim_buf_set_extmark(buf, vim.g.majjit_hl_ns, i - 1, 0, {
@@ -151,7 +151,7 @@ local function get_cursor_change_id()
     {}
   )
 
-  return M.state.changes[marks[1][1]]
+  return M.state.marks[marks[1][1]]
 end
 
 function M.diff_stat()
@@ -202,8 +202,8 @@ function M.new()
         virt_text = { { "@" .. " " } },
         virt_text_pos = "inline",
       })
-      M.state.changes[change] = mark_id
-      M.state.changes[mark_id] = change
+      M.state.marks[change] = mark_id
+      M.state.marks[mark_id] = change
     end)
   end)
 end
@@ -257,9 +257,7 @@ function M.describe()
     function(description)
       vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(description, "\n"))
       -- jump to buffer
-      -- vim.api.nvim_win_set_buf(0, buf)
       local win = Utils.popup(buf)
-      -- TODO: prepopulate with pre-existing commit message
       vim.api.nvim_set_option_value("winbar", "Describe: " .. change_id, { win = win })
       vim.api.nvim_create_autocmd("BufWriteCmd", {
         buffer = buf,
