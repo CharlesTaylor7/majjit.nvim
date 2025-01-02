@@ -57,9 +57,8 @@ function M.status()
   vim.keymap.set("n", "<c-v>", M.diff_view, { buffer = buf, desc = "toggle diff mode" })
   vim.keymap.set("n", "<c-e>", M.diff_select, { buffer = buf, desc = "toggle diff mode" })
 
-  require("coop").spawn(function()
-    local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'))"
-    local stdout = Utils.shell({ "jj", "log", "--color", "never", "--no-pager", "--no-graph", "-T", template })
+  local template = "concat(change_id.short(8), ' ', coalesce(description, '(no description)\n'))"
+  Utils.shell({ "jj", "log", "--color", "never", "--no-pager", "--no-graph", "-T", template }, function(stdout)
     local changes = vim.split(stdout, "\n")
 
     -- write status
@@ -67,8 +66,6 @@ function M.status()
     vim.api.nvim_buf_set_lines(buf, 0, -1, true, changes)
     vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
 
-    vim.api.nvim_set_option_value("cursorline", true, { win = 0 })
-    vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { fg = "red" })
     for i, line in ipairs(changes) do
       local change = vim.split(line, " ")[1]
       if change ~= "" then
@@ -77,12 +74,13 @@ function M.status()
           vim.g.majjit_ns,
           i,
           0,
-          { hl_group = "ChangeId", end_col = -1, cursorline_hl_group = "ChangeId" }
+          { hl_group = "ChangeId", line_hl_group = "ChangeId" }
         )
         M.state.changes[change] = mark_id
         M.state.changes[mark_id] = change
       end
     end
+    vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { bold = true })
   end)
 end
 
@@ -114,7 +112,7 @@ function M.diff_stat()
   local change_id = get_cursor_change_id()
   local cursor = vim.api.nvim_win_get_cursor(0)
   require("coop").spawn(function()
-    local stat = Utils.shell({ "jj", "show", change_id, "--stat", "-T", "" })
+    local stat = Utils.shell_async({ "jj", "show", change_id, "--stat", "-T", "" })
     set_change_info(cursor[1], stat)
   end)
 end
@@ -123,7 +121,7 @@ function M.diff_view()
   local change_id = get_cursor_change_id()
   local cursor = vim.api.nvim_win_get_cursor(0)
   require("coop").spawn(function()
-    local diff = Utils.shell({ "jj", "show", change_id, "-T", "" })
+    local diff = Utils.shell_async({ "jj", "show", change_id, "-T", "" })
     set_change_info(cursor[1], diff)
   end)
 end
@@ -133,7 +131,7 @@ function M.diff_select()
   local change_id = get_cursor_change_id()
   local cursor = vim.api.nvim_win_get_cursor(0)
   require("coop").spawn(function()
-    local diff = Utils.shell({ "jj", "show", change_id, "--git", "-T", "" })
+    local diff = Utils.shell_async({ "jj", "show", change_id, "--git", "-T", "" })
     set_change_info(cursor[1], diff)
   end)
 end
@@ -142,7 +140,7 @@ end
 function M.new()
   local change_id = get_cursor_change_id()
   require("coop").spawn(function()
-    Utils.shell({ "jj", "new", change_id })
+    Utils.shell_async({ "jj", "new", change_id })
     M.status()
   end)
 end
@@ -152,7 +150,7 @@ function M.absorb()
   local change_id = get_cursor_change_id()
 
   require("coop").spawn(function()
-    Utils.shell({ "jj", "absorb", "--from", change_id })
+    Utils.shell_async({ "jj", "absorb", "--from", change_id })
     M.status()
   end)
 end
@@ -162,7 +160,7 @@ function M.squash()
   local change_id = get_cursor_change_id()
 
   require("coop").spawn(function()
-    Utils.shell({ "jj", "squash", "--revision", change_id })
+    Utils.shell_async({ "jj", "squash", "--revision", change_id })
     M.status()
   end)
 end
@@ -172,7 +170,7 @@ function M.abandon()
   local change_id = get_cursor_change_id()
 
   require("coop").spawn(function()
-    Utils.shell({ "jj", "abandon", change_id })
+    Utils.shell_async({ "jj", "abandon", change_id })
     M.status()
   end)
 end
@@ -190,7 +188,7 @@ function M.describe()
     callback = function(args)
       require("coop").spawn(function()
         local message = table.concat(vim.api.nvim_buf_get_lines(args.buf, 0, -1, true), "\n")
-        local stdout = Utils.shell({ "jj", "describe", "-r", change_id, "-m", message })
+        local stdout = Utils.shell_async({ "jj", "describe", "-r", change_id, "-m", message })
         -- expected for the "BufWriteCmd" event
         vim.api.nvim_set_option_value("modified", false, { buf = args.buf })
         -- return to status buffer

@@ -26,7 +26,7 @@ end
 
 ---@param cmd string[]
 ---@param on_exit fun(string) -> nil
-local function shell(cmd, on_exit)
+function M.shell(cmd, on_exit)
   vim.system(cmd, {}, function(args)
     vim.schedule(function()
       if args.code ~= 0 then
@@ -39,7 +39,7 @@ local function shell(cmd, on_exit)
     end)
   end)
 end
-M.shell = M.coop_wrap(shell)
+M.shell_async = M.coop_wrap(M.shell)
 M.sleep = require("coop.uv-utils").sleep
 
 ---@generic T
