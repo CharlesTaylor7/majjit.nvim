@@ -51,9 +51,11 @@ function M.status()
   vim.keymap.set("n", "<localleader>s", M.squash, { buffer = buf, desc = "squash" })
   vim.keymap.set("n", "<localleader>w", M.absorb, { buffer = buf, desc = "absorb" })
   vim.keymap.set("n", "<localleader>n", M.new, { buffer = buf, desc = "new change" })
-  vim.keymap.set("n", "<localleader>ds", M.diff_stat, { buffer = buf, desc = "toggle diff mode" })
-  vim.keymap.set("n", "<localleader>dv", M.diff_view, { buffer = buf, desc = "toggle diff mode" })
-  vim.keymap.set("n", "<localleader>de", M.diff_editor, { buffer = buf, desc = "toggle diff mode" })
+  vim.keymap.set("n", "<localleader>ds", M.diff_stat, { buffer = buf, desc = "diff stat" })
+  vim.keymap.set("n", "<localleader>dv", M.diff_view, { buffer = buf, desc = "diff view" })
+  vim.keymap.set("n", "<localleader>de", M.diff_editor, { buffer = buf, desc = " diff editor" })
+  vim.keymap.set("n", "[c", M.navigate_prev_change, { buffer = buf, desc = "previous change" })
+  vim.keymap.set("n", "]c", M.navigate_next_change, { buffer = buf, desc = "next change" })
 
   local template = "concat(change_id.short(8), ' ', empty, ' ', description.first_line(), '\n')"
   Utils.shell({ "jj", "log", "--color=never", "--no-pager", "-T", template }, function(stdout)
@@ -125,11 +127,46 @@ function M.status()
   end)
 end
 
+--- mark tuple is: [extmark_id, row, col]
+---@return  [integer, integer, integer]
+function M.get_prev_change()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local marks = vim.api.nvim_buf_get_extmarks(
+    vim.g.majjit_status_buf,
+    vim.g.majjit_change_ns,
+    0,
+    { cursor[1] - 1, 0 },
+    {}
+  )
+  local n = vim.tbl_count(marks)
+  return vim.print(marks[n])
+end
+
+---@return  [integer, integer, integer]
+function M.get_next_change()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local marks = vim.api.nvim_buf_get_extmarks(vim.g.majjit_status_buf, vim.g.majjit_change_ns, { cursor[1], 1 }, -1, {})
+  vim.print(marks)
+  return marks[1]
+end
+
+function M.navigate_prev_change()
+  local mark = M.get_prev_change()
+  table.remove(mark, 1)
+  vim.api.nvim_win_set_cursor(0, mark)
+end
+
+function M.navigate_next_change()
+  local mark = M.get_next_change()
+  table.remove(mark, 1)
+  vim.api.nvim_win_set_cursor(0, mark)
+end
+
 ---@param start_row integer
 ---@param info string
 local function set_change_info(start_row, info)
   local next_mark =
-    vim.api.nvim_buf_get_extmarks(vim.g.majjit_status_buf, vim.g.majjit_hl_ns, { start_row, 0 }, -1, {})[1]
+    vim.api.nvim_buf_get_extmarks(vim.g.majjit_status_buf, vim.g.majjit_change_ns, { start_row, 0 }, -1, {})[1]
 
   local end_row = next_mark and next_mark[2] or -1
   Utils.buf_set_lines({
