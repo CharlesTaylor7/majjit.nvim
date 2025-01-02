@@ -81,7 +81,7 @@ function M.status()
         M.state.changes[mark_id] = change
       end
     end
-    vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { bold = true })
+    vim.api.nvim_set_hl(vim.g.majjit_ns, "ChangeId", { bold = true, bg = "green" })
   end)
 end
 
@@ -185,9 +185,8 @@ function M.describe()
   vim.api.nvim_create_autocmd("BufWriteCmd", {
     buffer = buf,
     callback = function(args)
-      require("coop").spawn(function()
-        local message = table.concat(vim.api.nvim_buf_get_lines(args.buf, 0, -1, true), "\n")
-        local stdout = Utils.shell_async({ "jj", "describe", "-r", change_id, "-m", message })
+      local message = table.concat(vim.api.nvim_buf_get_lines(args.buf, 0, -1, true), "\n")
+      Utils.shell({ "jj", "describe", "-r", change_id, "-m", message }, function()
         -- expected for the "BufWriteCmd" event
         vim.api.nvim_set_option_value("modified", false, { buf = args.buf })
         -- return to status buffer
@@ -196,11 +195,17 @@ function M.describe()
     end,
   })
 
-  -- jump to buffer
-  -- vim.api.nvim_win_set_buf(0, buf)
-  local win = Utils.popup(buf)
-  -- TODO: prepopulate with pre-existing commit message
-  vim.api.nvim_set_option_value("winbar", "Describe: " .. change_id, { win = win })
+  Utils.shell(
+    { "jj", "log", "-r", change_id, "--color=never", "--no-graph", "-T", "description" },
+    function(description)
+      vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(description, "\n"))
+      -- jump to buffer
+      -- vim.api.nvim_win_set_buf(0, buf)
+      local win = Utils.popup(buf)
+      -- TODO: prepopulate with pre-existing commit message
+      vim.api.nvim_set_option_value("winbar", "Describe: " .. change_id, { win = win })
+    end
+  )
 end
 
 -- begin: testing
